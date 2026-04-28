@@ -38,9 +38,15 @@ This doc is the source of truth for phase scope and status. Update the status li
 
 ## Phase 3 — Auth
 
-**Status:** pending
+**Status:** done
 
-**Delivers:** Auth.js (NextAuth) configured with the Google provider. Session storage via the Prisma adapter. A simple `/signin` page in an `(auth)` route group. The `(app)` route group is gated so unauthenticated users redirect to signin. App shell shows the current user's avatar and a sign-out action.
+**Delivers:** Auth.js v5 (`next-auth@beta`) wired with the Google provider and the Prisma adapter; database session strategy. `Account`, `Session`, and `VerificationToken` models added to `prisma/schema.prisma` (migration `20260428144750_add_auth`). `/signin` lives in an `(auth)` route group and renders a single "Continue with Google" button; the rest of the app lives under an `(app)` route group whose layout calls `auth()` and `redirect("/signin")` for unauthenticated requests. The sidebar footer now shows the user's avatar, name, email, theme toggle, and a sign-out button (server action calling `signOut`).
+
+**Notes:**
+- Env contract is now `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` — see `.env.example`.
+- `next.config.ts` now allows remote images from `lh3.googleusercontent.com` so Google profile photos render through `next/image`.
+- Smoke-tested: `GET /` returns a 307 redirect to `/signin`; `/signin` returns 200 with the expected markers. Full Google OAuth round-trip is browser-only and is the user's job to verify the first time.
+- Authorized redirect URI registered in Google Cloud Console: `http://localhost:3000/api/auth/callback/google`. Production URI gets added in P9.
 
 ## Phase 4 — Plan import
 
