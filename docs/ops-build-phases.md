@@ -22,16 +22,19 @@ This doc is the source of truth for phase scope and status. Update the status li
 
 ## Phase 2 — Database & schema
 
-**Status:** done — schema and client (migration application deferred until a live DB is wired up; see notes)
+**Status:** done
 
-**Delivers:** Prisma 6 installed (`prisma` dev + `@prisma/client` runtime). `prisma/schema.prisma` defines `User`, `Plan`, and `Day` models with cuid IDs (Auth.js-compatible), a `DayStatus` enum, and the indexes/uniques required by `core-spec.md` §5. `src/lib/db/index.ts` exports a typed Prisma client using the standard Next.js singleton pattern. `.env.example` documents the `DATABASE_URL` shape for both local and Azure connections.
+**Delivers:** Prisma 6 installed (`prisma` dev + `@prisma/client` runtime). `prisma/schema.prisma` defines `User`, `Plan`, and `Day` models with cuid IDs (Auth.js-compatible), a `DayStatus` enum, and the indexes/uniques required by `core-spec.md` §5. `src/lib/db/index.ts` exports a typed Prisma client using the standard Next.js singleton pattern. `.env.example` documents the `DATABASE_URL` shape for both local and Azure connections. Initial migration (`prisma/migrations/20260428143529_init`) generated and applied against the live Azure DB.
+
+**Live infrastructure:**
+- Resource group: `rg-justtoday` in West US 3 (West US 2 is offer-restricted for Visual Studio Enterprise subscriptions; tried that first).
+- Postgres Flexible Server: Burstable B1ms, version 16, 32 GB. Hostname captured in local `.env`, secrets in password manager.
+- App database: `justtoday` (alongside the default `postgres` DB).
+- Firewall: Azure services + the dev machine's public IP. Production App Service IP gets added in P9.
 
 **Notes:**
 - Initially installed Prisma 7, hit its new `prisma.config.ts` + adapter requirement (`url = env(...)` no longer allowed inline), and downgraded to Prisma 6 to keep config simple. Worth revisiting Prisma 7 later but not in v1.
-- Migration generation and application are **deferred** to the first session where a live Postgres exists. At that point: `npx prisma migrate dev --name init` will create `prisma/migrations/...` and apply it. The schema file is already the source of truth; nothing is lost by deferring.
-
-**Open decisions:**
-- Local development database — local Postgres in Docker, a `winget`-installed local Postgres, or an Azure dev DB. To be decided next session before P3 needs to run auth migrations.
+- One-time `Microsoft.DBforPostgreSQL` resource provider registration was required on the subscription before the first server create.
 
 ## Phase 3 — Auth
 
