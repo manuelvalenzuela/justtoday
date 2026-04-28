@@ -22,13 +22,16 @@ This doc is the source of truth for phase scope and status. Update the status li
 
 ## Phase 2 — Database & schema
 
-**Status:** pending
+**Status:** done — schema and client (migration application deferred until a live DB is wired up; see notes)
 
-**Delivers:** Prisma installed and configured against Azure Database for PostgreSQL. `schema.prisma` defines the `users`, `plans`, and `days` tables matching §5 of `core-spec.md`. Initial migration generated and applied. `src/lib/db/` exports a typed Prisma client.
+**Delivers:** Prisma 6 installed (`prisma` dev + `@prisma/client` runtime). `prisma/schema.prisma` defines `User`, `Plan`, and `Day` models with cuid IDs (Auth.js-compatible), a `DayStatus` enum, and the indexes/uniques required by `core-spec.md` §5. `src/lib/db/index.ts` exports a typed Prisma client using the standard Next.js singleton pattern. `.env.example` documents the `DATABASE_URL` shape for both local and Azure connections.
+
+**Notes:**
+- Initially installed Prisma 7, hit its new `prisma.config.ts` + adapter requirement (`url = env(...)` no longer allowed inline), and downgraded to Prisma 6 to keep config simple. Worth revisiting Prisma 7 later but not in v1.
+- Migration generation and application are **deferred** to the first session where a live Postgres exists. At that point: `npx prisma migrate dev --name init` will create `prisma/migrations/...` and apply it. The schema file is already the source of truth; nothing is lost by deferring.
 
 **Open decisions:**
-- Prisma vs Drizzle (defaulting to Prisma — gentler learning curve, EF-like DX, more docs in the Next.js world).
-- Local development database — local Postgres in Docker vs a shared Azure dev DB. Deferred until we need to run migrations.
+- Local development database — local Postgres in Docker, a `winget`-installed local Postgres, or an Azure dev DB. To be decided next session before P3 needs to run auth migrations.
 
 ## Phase 3 — Auth
 
