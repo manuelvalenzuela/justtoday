@@ -11,3 +11,4 @@ Specs and plans for the justtoday study-tracker app live here.
 ## Index
 
 - [core-spec.md](./core-spec.md) — v1 product and technical spec.
+- [ops-build-phases.md](./ops-build-phases.md) — phased build plan and current status.
