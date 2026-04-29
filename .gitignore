@@ -47,3 +47,6 @@ next-env.d.ts
 
 # Claude Code local project state
 .claude/
+
+# Playwright MCP session artifacts (snapshots, console logs, screenshots)
+.playwright-mcp/
