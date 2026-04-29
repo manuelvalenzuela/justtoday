@@ -50,9 +50,15 @@ This doc is the source of truth for phase scope and status. Update the status li
 
 ## Phase 4 — Plan import
 
-**Status:** pending
+**Status:** done
 
-**Delivers:** `src/lib/markdown.ts` parses the plan format from `core-spec.md` §2.1 into structured days. A "New plan" screen accepts a paste or file upload, validates, persists `original_markdown` on the plan and one row per day. Newly imported plans appear in the sidebar.
+**Delivers:** `src/lib/markdown.ts` parses the plan format from `core-spec.md` §2.1 into `{ title, days: [{ dayNumber, goal, topics }] }` with `PlanParseError` on malformed input. `src/server/plans.ts` exposes `createPlan(userId, markdown)` (transactionally inserts a `Plan` and its `Day` rows) and `listPlansForUser(userId)`. The `/plans/new` route renders an import form (paste-or-upload + textarea) wired to a server action; on success it `revalidatePath` and redirects to `/`. The sidebar pre-fetches plans in `(app)/layout.tsx` and shows them with a "New plan" link in the header. Auth.js now exposes `session.user.id` via a session callback plus a `next-auth.d.ts` module augmentation.
+
+**Notes:**
+- Smoke-tested end-to-end via Playwright MCP: pasted a 3-day Spanish plan, hit Create, landed on `/` with the plan in the sidebar, verified `Plan` + 3 `Day` rows in the DB. Cleaned up the synthetic user afterwards.
+- The Azure Postgres firewall rule had to be updated to the current dev IP — server-side IP allowlists drift any time the dev machine moves networks.
+- Plan items in the sidebar are plain rows for now; switching/linking happens in P5 alongside the chat shell.
+- shadcn's base-nova `Button` does not support `asChild`; for `<Link>`-as-button use `buttonVariants()` to apply the styles.
 
 ## Phase 5 — Chat shell
 

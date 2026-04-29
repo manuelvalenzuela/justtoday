@@ -1,8 +1,9 @@
-import { LogOut } from "lucide-react";
+import { LogOut, Plus } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { signOut } from "@/lib/auth";
 
 export type SidebarUser = {
@@ -11,18 +12,59 @@ export type SidebarUser = {
   image?: string | null;
 };
 
-export function Sidebar({ user }: { user: SidebarUser }) {
+export type SidebarPlan = {
+  id: string;
+  title: string;
+  active: boolean;
+};
+
+export function Sidebar({
+  user,
+  plans,
+}: {
+  user: SidebarUser;
+  plans: SidebarPlan[];
+}) {
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
       <div className="px-5 py-4 border-b">
         <h1 className="text-base font-semibold tracking-tight">justtoday</h1>
       </div>
 
-      <div className="flex-1 px-3 py-4">
-        <h2 className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Plans
-        </h2>
-        <p className="mt-3 px-2 text-sm text-muted-foreground">No plans yet.</p>
+      <div className="flex-1 overflow-y-auto px-3 py-4">
+        <div className="flex items-center justify-between px-2">
+          <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Plans
+          </h2>
+          <Link
+            href="/plans/new"
+            aria-label="New plan"
+            className={buttonVariants({
+              variant: "ghost",
+              size: "icon",
+              className: "size-7",
+            })}
+          >
+            <Plus className="size-4" />
+          </Link>
+        </div>
+
+        {plans.length === 0 ? (
+          <p className="mt-3 px-2 text-sm text-muted-foreground">
+            No plans yet.
+          </p>
+        ) : (
+          <ul className="mt-2 flex flex-col gap-0.5">
+            {plans.map((plan) => (
+              <li
+                key={plan.id}
+                className="block truncate rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/90"
+              >
+                {plan.title}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="border-t px-3 py-3">

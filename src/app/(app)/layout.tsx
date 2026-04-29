@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { auth } from "@/lib/auth";
+import { listPlansForUser } from "@/server/plans";
 
 export default async function AuthenticatedLayout({
   children,
@@ -13,5 +14,11 @@ export default async function AuthenticatedLayout({
     redirect("/signin");
   }
 
-  return <AppShell user={session.user}>{children}</AppShell>;
+  const plans = await listPlansForUser(session.user.id);
+
+  return (
+    <AppShell user={session.user} plans={plans}>
+      {children}
+    </AppShell>
+  );
 }
