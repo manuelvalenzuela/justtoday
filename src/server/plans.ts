@@ -11,10 +11,22 @@ export async function listPlansForUser(userId: string) {
   });
 }
 
+export async function getActivePlan(userId: string) {
+  return db.plan.findFirst({
+    where: { userId, active: true },
+    include: { days: { orderBy: { dayNumber: "asc" } } },
+  });
+}
+
 export async function createPlan(userId: string, markdown: string) {
   const parsed = parsePlan(markdown);
 
   return db.$transaction(async (tx) => {
+    await tx.plan.updateMany({
+      where: { userId, active: true },
+      data: { active: false },
+    });
+
     const plan = await tx.plan.create({
       data: {
         userId,
@@ -35,4 +47,25 @@ export async function createPlan(userId: string, markdown: string) {
 
     return plan;
   });
+}
+
+export async function setActivePlan(userId: string, planId: string) {
+  const plan = await db.plan.findFirst({
+    where: { id: planId, userId },
+    select: { id: true },
+  });
+  if (!plan) {
+    throw new Error("Plan not found.");
+  }
+
+  await db.$transaction([
+    db.plan.updateMany({
+      where: { userId, active: true },
+      data: { active: false },
+    }),
+    db.plan.update({
+      where: { id: planId },
+      data: { active: true },
+    }),
+  ]);
 }

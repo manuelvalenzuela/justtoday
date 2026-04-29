@@ -2,8 +2,10 @@ import { LogOut, Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { setActivePlanAction } from "@/app/(app)/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth";
 
 export type SidebarUser = {
@@ -56,11 +58,21 @@ export function Sidebar({
         ) : (
           <ul className="mt-2 flex flex-col gap-0.5">
             {plans.map((plan) => (
-              <li
-                key={plan.id}
-                className="block truncate rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/90"
-              >
-                {plan.title}
+              <li key={plan.id}>
+                <form action={setActivePlanAction}>
+                  <input type="hidden" name="planId" value={plan.id} />
+                  <button
+                    type="submit"
+                    className={cn(
+                      "block w-full truncate rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+                      plan.active
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                    )}
+                  >
+                    {plan.title}
+                  </button>
+                </form>
               </li>
             ))}
           </ul>

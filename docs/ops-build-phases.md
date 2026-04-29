@@ -62,9 +62,14 @@ This doc is the source of truth for phase scope and status. Update the status li
 
 ## Phase 5 — Chat shell
 
-**Status:** pending
+**Status:** done
 
-**Delivers:** The main column becomes a chat surface — message list with streaming-ready bubbles, composer at the bottom, basic message styling. Sidebar lists real plans from the DB and lets the user switch the active plan. No LLM yet; chat is purely local state at this point.
+**Delivers:** Main column is now a chat surface. `ChatSurface` (client) holds local `{ id, role, content }[]` state — streaming-ready shape that lines up with the Vercel AI SDK's `Message` type. `Composer` is a centered, rounded auto-grow textarea with a circular Send button (Enter to send, Shift+Enter for newline). User messages render as right-aligned subtle bubbles; assistant messages render as plain left-aligned text — Claude-style. Empty state shows the active day's `Day N: <goal>` as a centered greeting. Header above the chat shows the active plan title. Sidebar plan items are now form buttons hitting `setActivePlanAction`; the active plan is visually highlighted. `createPlan` deactivates other plans on insert so there's always exactly one active. Switching plans remounts the chat surface (`key={plan.id}`) so messages don't bleed across plans.
+
+**Notes:**
+- No LLM call yet — sending appends a stub `(LLM responses arrive in Phase 6.)` assistant message. P6 swaps the stub for a streamed Vercel AI SDK call.
+- Smoke-tested via Playwright with two seeded plans: send → bubble appears, switch plans → header + highlight update, chat resets to the new plan's day greeting. Verified light + dark.
+- `Composer` is a `forwardRef` exposing `focus()` so P6 can pull focus back after a send.
 
 ## Phase 6 — AI wiring
 
