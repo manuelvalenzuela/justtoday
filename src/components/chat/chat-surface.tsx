@@ -1,10 +1,11 @@
 "use client";
 
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { useEffect, useRef, useState } from "react";
 
 import { Composer } from "./composer";
 import { Message } from "./message";
-import type { ChatMessage } from "./types";
 
 export type ChatSurfaceProps = {
   planTitle: string;
@@ -12,32 +13,25 @@ export type ChatSurfaceProps = {
 };
 
 export function ChatSurface({ planTitle, greeting }: ChatSurfaceProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { messages, sendMessage, status, error } = useChat({
+    transport: new DefaultChatTransport({ api: "/api/chat" }),
+  });
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages.length]);
+  }, [messages]);
+
+  const isStreaming = status === "submitted" || status === "streaming";
 
   function handleSubmit() {
     const trimmed = input.trim();
-    if (!trimmed) return;
-
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: trimmed,
-    };
-    const assistantStub: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: "(LLM responses arrive in Phase 6.)",
-    };
-
-    setMessages((prev) => [...prev, userMessage, assistantStub]);
+    if (!trimmed || isStreaming) return;
+    sendMessage({ text: trimmed });
     setInput("");
   }
 
@@ -60,10 +54,21 @@ export function ChatSurface({ planTitle, greeting }: ChatSurfaceProps) {
               <Message key={message.id} message={message} />
             ))
           )}
+
+          {error ? (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error.message || "Something went wrong. Try again."}
+            </div>
+          ) : null}
         </div>
       </div>
 
-      <Composer value={input} onChange={setInput} onSubmit={handleSubmit} />
+      <Composer
+        value={input}
+        onChange={setInput}
+        onSubmit={handleSubmit}
+        disabled={isStreaming}
+      />
     </div>
   );
 }

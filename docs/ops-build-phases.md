@@ -73,12 +73,17 @@ This doc is the source of truth for phase scope and status. Update the status li
 
 ## Phase 6 — AI wiring
 
-**Status:** pending
+**Status:** done
 
-**Delivers:** Vercel AI SDK installed and pointed at Azure AI Foundry. Default model is `claude-opus-4-7`, configurable via env var per `core-spec.md` §7. The chat surface streams responses from the model. System prompt establishes the app's persona and the day-by-day rhythm.
+**Delivers:** Vercel AI SDK v6 (`ai`, `@ai-sdk/azure`, `@ai-sdk/react`) installed. `src/lib/ai.ts` lazily builds an Azure OpenAI provider from `AZURE_AI_ENDPOINT` + `AZURE_AI_API_KEY` + `AZURE_AI_DEPLOYMENT` + `AZURE_AI_API_VERSION` (lazy so builds don't need the key). `src/app/api/chat/route.ts` is the streaming endpoint: authenticates via Auth.js, fetches the active plan, builds the system prompt, converts UIMessages to model messages, and returns `result.toUIMessageStreamResponse()`. `ChatSurface` swapped from local state to `useChat` (`@ai-sdk/react`) over a `DefaultChatTransport` pointed at `/api/chat`; composer is disabled while `status` is `submitted`/`streaming` and surfaces transport errors inline. `src/lib/system-prompt.ts` builds the persona — short/warm tone, daily rhythm (check-in / study / close-out), today's day + goal + topics, and a hint about the most recent completed day.
 
-**Open decisions:**
-- Streaming endpoint shape — App Router route handler (`app/api/chat/route.ts`) vs a server action. Both are supported by the Vercel AI SDK; route handler is the more conventional choice for streaming.
+**Notes:**
+- Anthropic Claude models are not available on Foundry in any region this user can pick from, so the v1 default model is **GPT-5.4 Pro** instead of Claude Opus 4.7. The env contract still abstracts the deployment so we can swap later without code changes.
+- The Foundry endpoint is the `cognitiveservices.azure.com` shape — `@ai-sdk/azure` connects via `baseURL: "${endpoint}/openai"` so the SDK's `/v1{path}` suffix lands on the right route.
+- Plan adaptation tool calls land in P8; for now the system prompt explicitly says "plan adjustments are handled by a separate step, not by you".
+
+**Open decisions resolved:**
+- Streaming endpoint: route handler at `app/api/chat/route.ts` (over server actions), per the v6 SDK's expected `useChat` transport shape.
 
 ## Phase 7 — Daily flows
 

@@ -1,15 +1,19 @@
+import type { UIMessage } from "ai";
+
 import { cn } from "@/lib/utils";
 
-import type { ChatMessage } from "./types";
-
-export function Message({ message }: { message: ChatMessage }) {
+export function Message({ message }: { message: UIMessage }) {
   const isUser = message.role === "user";
+  const text = message.parts
+    .filter((p) => p.type === "text")
+    .map((p) => p.text)
+    .join("");
+
+  if (!text) return null;
+
   return (
     <div
-      className={cn(
-        "flex w-full",
-        isUser ? "justify-end" : "justify-start",
-      )}
+      className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
     >
       <div
         className={cn(
@@ -19,7 +23,7 @@ export function Message({ message }: { message: ChatMessage }) {
             : "text-foreground",
         )}
       >
-        {message.content}
+        {text}
       </div>
     </div>
   );
