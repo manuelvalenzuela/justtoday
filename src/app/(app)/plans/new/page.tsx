@@ -1,4 +1,4 @@
-import { ImportForm } from "@/components/plans/import-form";
+import { NewPlanFlow } from "@/components/plans/new-plan-flow";
 
 export default function NewPlanPage() {
   return (
@@ -6,13 +6,13 @@ export default function NewPlanPage() {
       <div className="w-full max-w-[720px] px-6 py-12">
         <h2 className="text-xl font-semibold tracking-tight">New plan</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Paste a markdown plan or upload a <code>.md</code> file. Use{" "}
-          <code>## Day N</code> headers and a <code>**Goal:**</code> line per
-          day.
+          Paste anything — a structured outline, a ChatGPT plan, or just a few
+          sentences. I&apos;ll turn it into a day-by-day plan you can edit
+          before saving.
         </p>
 
         <div className="mt-8">
-          <ImportForm />
+          <NewPlanFlow />
         </div>
       </div>
     </div>

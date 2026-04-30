@@ -1,7 +1,7 @@
 import "server-only";
 
 import { db } from "@/lib/db";
-import { parsePlan } from "@/lib/markdown";
+import type { ParsedPlan } from "@/lib/plan-llm";
 
 export async function listPlansForUser(userId: string) {
   return db.plan.findMany({
@@ -18,9 +18,11 @@ export async function getActivePlan(userId: string) {
   });
 }
 
-export async function createPlan(userId: string, markdown: string) {
-  const parsed = parsePlan(markdown);
-
+export async function createPlan(
+  userId: string,
+  originalInput: string,
+  draft: ParsedPlan,
+) {
   return db.$transaction(async (tx) => {
     await tx.plan.updateMany({
       where: { userId, active: true },
@@ -30,16 +32,16 @@ export async function createPlan(userId: string, markdown: string) {
     const plan = await tx.plan.create({
       data: {
         userId,
-        title: parsed.title,
-        originalMarkdown: markdown,
+        title: draft.title,
+        originalMarkdown: originalInput,
         active: true,
       },
     });
 
     await tx.day.createMany({
-      data: parsed.days.map((day) => ({
+      data: draft.days.map((day, idx) => ({
         planId: plan.id,
-        dayNumber: day.dayNumber,
+        dayNumber: idx + 1,
         goal: day.goal,
         topics: day.topics,
       })),

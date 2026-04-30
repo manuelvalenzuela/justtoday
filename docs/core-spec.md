@@ -14,38 +14,23 @@ The guiding principle is *small and lightweight*. Anything not in this document 
 
 ## 2. Plans
 
-### 2.1 Format
+### 2.1 Input
 
-A plan is a markdown file with one section per day:
+The user pastes (or uploads) **arbitrary text** describing their plan — a structured markdown outline, a ChatGPT export, a list of topics, or just a few sentences. The LLM converts that input into the canonical day-by-day shape: `{ title, days: [{ dayNumber, goal, topics[] }] }`. The user then sees that shape in an **editable preview** (title, day cards with goal + topics, add/remove/reorder days, add/remove topics) and confirms by saving. The verbatim original input is stored on the plan record so the user can always return to it.
 
-```markdown
-# My Study Plan
-
-## Day 1
-**Goal:** Understand X
-- Topic A
-- Topic B
-
-## Day 2
-**Goal:** Practice Y
-- Topic C
-```
-
-- `## Day N` headers define the day sequence.
-- `**Goal:**` line is the day's objective.
-- Bulleted items below are the topics for that day.
+There is no required input format — markdown with `## Day N` / `**Goal:**` works fine but is not special-cased.
 
 ### 2.2 Multiple plans
 
 - A user can have multiple plans (e.g. "Spanish" and "Machine Learning") running in parallel.
 - One plan is **active** at a time; the user can switch.
 
-### 2.3 Markdown is import-only; the database is the source of truth
+### 2.3 Input is import-only; the database is the source of truth
 
-- Markdown is the **input format**: users paste or upload it once when creating a plan. After that, the parsed structure (rows in the `days` table) is the canonical state.
-- The **original markdown** is stored verbatim on the plan record so the user can always compare to what they started with.
-- Adaptations modify rows in `days` directly. There is no "current markdown" stored field — if the UI ever needs to show the current plan as markdown, it's rendered on-the-fly from `days`.
-- Why this split: users can author plans wherever they like (Notion, Obsidian, ChatGPT output) and own a portable file outside the app, while the app avoids the pain of round-tripping edits through a markdown parser.
+- The free-form input is parsed once via the LLM, the user edits the preview, and from then on the rows in the `days` table are the canonical state.
+- The **verbatim original input** is stored on the plan record so the user can always compare to what they started with.
+- Adaptations modify rows in `days` directly. There is no "current plan" textual field — if the UI ever needs to show the current plan as text, it's rendered on-the-fly from `days`.
+- Why this split: users can author plans wherever they like (Notion, Obsidian, ChatGPT output) and own a portable file outside the app, while the app avoids the pain of round-tripping edits through any specific input format.
 
 ## 3. Daily flows
 
