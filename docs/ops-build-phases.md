@@ -80,6 +80,8 @@ This doc is the source of truth for phase scope and status. Update the status li
 **Notes:**
 - Anthropic Claude models are not available on Foundry in any region this user can pick from, so the v1 default model is **GPT-5.4 Pro** instead of Claude Opus 4.7. The env contract still abstracts the deployment so we can swap later without code changes.
 - The Foundry endpoint is the `cognitiveservices.azure.com` shape — `@ai-sdk/azure` connects via `baseURL: "${endpoint}/openai"` so the SDK's `/v1{path}` suffix lands on the right route.
+- `AZURE_AI_API_VERSION` is **`preview`**, not a dated string. GPT-5.4 Pro is served via the Azure Responses API, which only the rolling `preview` channel supports right now (`2024-04-01-preview` returns `BadRequest: API version not supported`).
+- Assistant bubbles render through `react-markdown` + `remark-gfm` with `@tailwindcss/typography` for prose styling. Streaming works as expected — token-by-token arrival, composer disabled mid-stream.
 - Plan adaptation tool calls land in P8; for now the system prompt explicitly says "plan adjustments are handled by a separate step, not by you".
 
 **Open decisions resolved:**
