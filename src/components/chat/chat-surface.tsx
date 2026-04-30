@@ -21,13 +21,14 @@ export function ChatSurface({ planTitle, greeting }: ChatSurfaceProps) {
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
     onFinish: ({ message }) => {
-      const closedOut = message.parts.some(
+      const planMutated = message.parts.some(
         (p) =>
-          p.type === "tool-closeOutDay" &&
+          (p.type === "tool-closeOutDay" ||
+            p.type === "tool-adjustUpcomingDays") &&
           "state" in p &&
           p.state === "output-available",
       );
-      if (closedOut) router.refresh();
+      if (planMutated) router.refresh();
     },
   });
 

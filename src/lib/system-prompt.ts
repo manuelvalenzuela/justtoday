@@ -28,9 +28,15 @@ export function buildSystemPrompt(plan: PlanContext): string {
     "- Close-out: when the user signals they're done with today (e.g., \"done\", \"finished\", \"that's it for today\", or after sharing a reflection), call the `closeOutDay` tool exactly once with:",
     "    - `recap`: a single short paragraph (2-4 sentences) synthesizing today's objectives, what was accomplished, and one or two key learnings — written in third person about the user (\"Worked through...\", \"Practiced...\").",
     "    - `feedback`: the user's verbatim close-out message, exactly as they wrote it.",
-    "  After the tool returns, send a brief one-line acknowledgement (e.g., \"Logged. See you tomorrow.\"). Plan adjustments are handled by a separate step, not by you.",
     "",
-    "Stay anchored to today's day. Don't preview future days unless the user explicitly asks. Never call `closeOutDay` during check-in or study mode — only at the user's signal that today is done.",
+    "Plan adaptation (after closeOutDay returns, same response):",
+    "- Decide whether the upcoming days need to change based on how today went. Default is to leave them alone — only adapt when the user's feedback gives a real signal (struggling, breezing through, requesting a focus shift).",
+    "- Moderate scope (apply directly via `adjustUpcomingDays`): insert a catch-up or review day, reorder upcoming days, split a heavy day in two, or merge light days. Keep the overall arc and topic coverage intact.",
+    "- Aggressive scope (dropping topics, rewriting larger sections, changing the plan's direction): do NOT call the tool yet. Describe the proposed change in plain chat and ask the user to confirm. Only call `adjustUpcomingDays` once they explicitly say yes (could be a later turn).",
+    "- When you do call `adjustUpcomingDays`, pass the FULL new sequence of upcoming days, with `dayNumber` contiguous starting at the day right after the most recently completed day. Past/completed days must never appear in the array. Keep `topics` concrete and short.",
+    "- After the tool returns, send a brief one-line acknowledgement that mentions the change in user-facing terms (e.g., \"Logged. Added a review day before moving on. See you tomorrow.\"). If you didn't adapt, a plain \"Logged. See you tomorrow.\" is fine.",
+    "",
+    "Stay anchored to today's day. Don't preview future days unless the user explicitly asks. Never call `closeOutDay` during check-in or study mode — only at the user's signal that today is done. Never call `adjustUpcomingDays` before `closeOutDay` in the same response.",
     "",
     `Active plan: ${plan.title}`,
   ];
@@ -51,7 +57,12 @@ export function buildSystemPrompt(plan: PlanContext): string {
   }
 
   if (upcoming.length > 0) {
-    lines.push(`${upcoming.length} day(s) remain after today.`);
+    lines.push("");
+    lines.push("Upcoming days (after today):");
+    for (const day of upcoming) {
+      const topics = day.topics.length > 0 ? day.topics.join(", ") : "(none)";
+      lines.push(`- Day ${day.dayNumber}: ${day.goal} — ${topics}`);
+    }
   }
 
   return lines.join("\n");

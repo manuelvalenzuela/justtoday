@@ -79,6 +79,70 @@ export async function completeDay(
   });
 }
 
+export type AdjustedDay = {
+  dayNumber: number;
+  goal: string;
+  topics: string[];
+};
+
+export async function adjustUpcomingDays(
+  userId: string,
+  planId: string,
+  newDays: AdjustedDay[],
+) {
+  if (newDays.length === 0) {
+    throw new Error("Adaptation must include at least one upcoming day.");
+  }
+
+  return db.$transaction(async (tx) => {
+    const plan = await tx.plan.findFirst({
+      where: { id: planId, userId },
+      select: { id: true },
+    });
+    if (!plan) {
+      throw new Error("Plan not found.");
+    }
+
+    const completed = await tx.day.findMany({
+      where: { planId, status: "completed" },
+      select: { dayNumber: true },
+    });
+    const maxCompleted = completed.reduce(
+      (max, d) => (d.dayNumber > max ? d.dayNumber : max),
+      0,
+    );
+    const expectedFirst = maxCompleted + 1;
+
+    const sorted = [...newDays].sort((a, b) => a.dayNumber - b.dayNumber);
+    sorted.forEach((day, idx) => {
+      const expected = expectedFirst + idx;
+      if (day.dayNumber !== expected) {
+        throw new Error(
+          `Day numbers must be contiguous starting at ${expectedFirst}; got ${day.dayNumber} at position ${idx}.`,
+        );
+      }
+      if (!day.goal.trim()) {
+        throw new Error(`Day ${day.dayNumber} is missing a goal.`);
+      }
+    });
+
+    await tx.day.deleteMany({
+      where: { planId, status: "pending" },
+    });
+
+    await tx.day.createMany({
+      data: sorted.map((day) => ({
+        planId,
+        dayNumber: day.dayNumber,
+        goal: day.goal,
+        topics: day.topics,
+      })),
+    });
+
+    return { count: sorted.length, firstDayNumber: expectedFirst };
+  });
+}
+
 export async function setActivePlan(userId: string, planId: string) {
   const plan = await db.plan.findFirst({
     where: { id: planId, userId },

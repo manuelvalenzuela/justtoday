@@ -100,9 +100,15 @@ This doc is the source of truth for phase scope and status. Update the status li
 
 ## Phase 8 — Plan adaptation
 
-**Status:** pending
+**Status:** done
 
-**Delivers:** At close-out, the LLM proposes plan adjustments to the **future** days only. Default is the *moderate* scope (insert catch-up days, reorder, split, merge). The *aggressive* scope (drop topics, full rewrite) is gated behind an explicit confirmation step in chat per `core-spec.md` §4. `original_markdown` stays untouched; only `days` rows are updated.
+**Delivers:** A second AI SDK tool, `adjustUpcomingDays({ summary, days })`, registered alongside `closeOutDay` in `src/app/api/chat/route.ts` whenever the active plan has any pending days. Its `execute` calls `adjustUpcomingDays()` in `src/server/plans.ts`, which transactionally deletes all `pending` Day rows for the plan and recreates them from the model's payload. The server validates that incoming `dayNumber`s are contiguous and start at `maxCompleted + 1`, so completed days are immutable and `originalMarkdown` is never touched. `streamText` now runs with `stopWhen: stepCountIs(5)` so the model can call `closeOutDay`, then `adjustUpcomingDays`, then emit a brief acknowledgement in the same response. `buildSystemPrompt` describes the moderate-vs-aggressive split per `core-spec.md` §4: moderate adjustments (insert catch-up days, reorder, split, merge) are applied directly; aggressive scope (drop topics, rewrite larger sections) must first be proposed in plain chat and only applied after explicit user confirmation in a follow-up turn. The system prompt also lists upcoming days so the model has the full picture before adapting. `ChatSurface`'s `onFinish` triggers `router.refresh()` for either tool's `output-available` part.
+
+**Notes:**
+- Smoke-tested via Playwright with a 4-day Spanish plan: closed out Day 1 with feedback that signalled struggle ("teens still really shaky, need more drilling"). The model called `closeOutDay`, then `adjustUpcomingDays` with a new 4-day sequence — inserted "Day 2: Stabilize numbers 1–20" as a catch-up day, with the original days 2–4 pushed back to days 3–5. `originalMarkdown` unchanged in the DB; UI rolled forward to the new Day 2 with empty chat.
+- Tool registration uses two `tool()` calls into separate `?: undefined` locals and spreads them into the final `tools` object — typing a single `Record<string, ReturnType<typeof tool>>` collapses the input schemas to `never` and breaks `execute` typing.
+- Aggressive-scope confirmation is enforced **only via the system prompt**, not by a server-side gate. The tool itself accepts any contiguous future-day sequence; the model is instructed to delay the call until the user says yes. This keeps the v1 wire simple and matches `core-spec.md` §4 ("requires the LLM to propose the change in chat and get explicit user confirmation").
+- The end-to-end response (close-out + adapt + ack) takes ~7 minutes wall-clock on the current GPT-5.4 Pro deployment because of the double tool call; functional but slow. Worth revisiting in P9 if it becomes a UX issue.
 
 ## Phase 9 — Deploy
 
