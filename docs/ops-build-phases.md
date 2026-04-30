@@ -89,9 +89,14 @@ This doc is the source of truth for phase scope and status. Update the status li
 
 ## Phase 7 — Daily flows
 
-**Status:** pending
+**Status:** done
 
-**Delivers:** The three flows from `core-spec.md` §3 work end-to-end against a real plan: check-in (yesterday recap + today's goal & plan), study mode (free-form Q&A until the user signals done), and close-out (free-text feedback that writes the day record and marks the day complete). Mode switching is driven by the model's tool calls or context, not hard-coded UI states.
+**Delivers:** The three flows from `core-spec.md` §3 work end-to-end against a real plan. Check-in and study mode are pure prompt behaviour driven by `buildSystemPrompt` (which describes the rhythm and the active day). Close-out is wired through a single AI SDK tool call: `closeOutDay({ recap, feedback })` defined in `src/app/api/chat/route.ts`, registered only when the active plan still has a pending day. The tool's `execute` calls `completeDay()` in `src/server/plans.ts`, which transactionally sets `status=completed`, stores the model-synthesised `recap` and the user's verbatim `feedback`, and stamps `completedAt`. `streamText` runs with `stopWhen: stepCountIs(3)` so the model can call the tool, receive the result, and emit a brief acknowledgement in the same response. `ChatSurface` watches `useChat`'s `onFinish` for a `tool-closeOutDay` part with `state === "output-available"` and calls `router.refresh()`; the page key is now `${plan.id}:${nextDay.dayNumber}` so the chat surface remounts when the active day advances — discarding the day's working-memory transcript per `core-spec.md` §3.2.
+
+**Notes:**
+- Verified end-to-end via Playwright with a seeded smoke user: check-in streamed today's goal/plan, "done — practiced..." triggered `closeOutDay`, the DB row went from `status=pending` to `completed` with a synthesised recap + verbatim feedback + `completedAt`, and the UI rolled forward to "Day 2: Order food in a café" with an empty chat.
+- The system prompt (`src/lib/system-prompt.ts`) gates tool use explicitly: "Do NOT call any tool" during check-in/study, and "call `closeOutDay` exactly once" at user signal — `recap` in third person, `feedback` verbatim. Without that gating GPT-5.4 Pro tended to either skip the tool or call it during check-in.
+- Plan adaptation tool calls land in P8; `closeOutDay` deliberately does not touch `days` rows beyond marking today complete.
 
 ## Phase 8 — Plan adaptation
 

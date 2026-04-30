@@ -50,3 +50,6 @@ next-env.d.ts
 
 # Playwright MCP session artifacts (snapshots, console logs, screenshots)
 .playwright-mcp/
+
+# Ephemeral smoke-test scripts (created and removed per session)
+/scripts/

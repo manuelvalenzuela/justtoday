@@ -49,6 +49,36 @@ export async function createPlan(userId: string, markdown: string) {
   });
 }
 
+export async function completeDay(
+  userId: string,
+  planId: string,
+  dayNumber: number,
+  recap: string,
+  feedback: string,
+) {
+  const day = await db.day.findFirst({
+    where: {
+      dayNumber,
+      status: "pending",
+      plan: { id: planId, userId },
+    },
+    select: { id: true },
+  });
+  if (!day) {
+    throw new Error("Day not found, already completed, or not yours.");
+  }
+
+  await db.day.update({
+    where: { id: day.id },
+    data: {
+      status: "completed",
+      recap,
+      feedback,
+      completedAt: new Date(),
+    },
+  });
+}
+
 export async function setActivePlan(userId: string, planId: string) {
   const plan = await db.plan.findFirst({
     where: { id: planId, userId },

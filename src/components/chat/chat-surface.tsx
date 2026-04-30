@@ -2,6 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { Composer } from "./composer";
@@ -15,9 +16,19 @@ export type ChatSurfaceProps = {
 export function ChatSurface({ planTitle, greeting }: ChatSurfaceProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
+    onFinish: ({ message }) => {
+      const closedOut = message.parts.some(
+        (p) =>
+          p.type === "tool-closeOutDay" &&
+          "state" in p &&
+          p.state === "output-available",
+      );
+      if (closedOut) router.refresh();
+    },
   });
 
   useEffect(() => {

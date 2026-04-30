@@ -22,7 +22,7 @@ export default async function Home() {
 
     return (
       <ChatSurface
-        key={active.id}
+        key={`${active.id}:${nextDay?.dayNumber ?? "done"}`}
         planTitle={active.title}
         greeting={greeting}
       />
