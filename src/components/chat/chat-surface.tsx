@@ -7,13 +7,21 @@ import { useEffect, useRef, useState } from "react";
 
 import { Composer } from "./composer";
 import { Message } from "./message";
+import { TodayPill } from "./today-pill";
+import { TodaySummary } from "./today-summary";
+
+export type TodayInfo = {
+  dayNumber: number;
+  goal: string;
+  topics: string[];
+};
 
 export type ChatSurfaceProps = {
   planTitle: string;
-  greeting?: string;
+  today: TodayInfo | null;
 };
 
-export function ChatSurface({ planTitle, greeting }: ChatSurfaceProps) {
+export function ChatSurface({ planTitle, today }: ChatSurfaceProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -49,18 +57,35 @@ export function ChatSurface({ planTitle, greeting }: ChatSurfaceProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-14 shrink-0 items-center border-b px-6">
-        <h2 className="text-sm font-medium tracking-tight">{planTitle}</h2>
+      <header className="flex h-14 shrink-0 items-center border-b px-4 md:px-6">
+        {today ? (
+          <TodayPill
+            dayNumber={today.dayNumber}
+            goal={today.goal}
+            topics={today.topics}
+          />
+        ) : (
+          <h2 className="text-sm font-medium tracking-tight">{planTitle}</h2>
+        )}
       </header>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-6 py-8">
           {messages.length === 0 ? (
-            <div className="pt-12 text-center">
-              <p className="text-base text-muted-foreground">
-                {greeting ?? "What would you like to work on today?"}
-              </p>
-            </div>
+            today ? (
+              <TodaySummary
+                dayNumber={today.dayNumber}
+                goal={today.goal}
+                topics={today.topics}
+                className="pt-10"
+              />
+            ) : (
+              <div className="pt-12 text-center">
+                <p className="text-base text-muted-foreground">
+                  All days complete. Add a new plan to keep going.
+                </p>
+              </div>
+            )
           ) : (
             messages.map((message) => (
               <Message key={message.id} message={message} />

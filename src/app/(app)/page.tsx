@@ -16,15 +16,19 @@ export default async function Home() {
 
   if (active) {
     const nextDay = active.days.find((d) => d.status === "pending");
-    const greeting = nextDay
-      ? `Day ${nextDay.dayNumber}: ${nextDay.goal}`
-      : "All days complete. Add a new plan to keep going.";
+    const today = nextDay
+      ? {
+          dayNumber: nextDay.dayNumber,
+          goal: nextDay.goal,
+          topics: nextDay.topics,
+        }
+      : null;
 
     return (
       <ChatSurface
         key={`${active.id}:${nextDay?.dayNumber ?? "done"}`}
         planTitle={active.title}
-        greeting={greeting}
+        today={today}
       />
     );
   }
