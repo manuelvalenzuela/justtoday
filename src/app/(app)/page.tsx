@@ -5,15 +5,17 @@ import { TodayPill } from "@/components/chat/today-pill";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
+import { getActiveTranscript } from "@/server/conversations";
 import { getActivePlan, listPlansForUser } from "@/server/plans";
 
 export default async function Home() {
   const session = await auth();
   if (!session?.user) return null;
 
-  const [active, plans] = await Promise.all([
+  const [active, plans, transcript] = await Promise.all([
     getActivePlan(session.user.id),
     listPlansForUser(session.user.id),
+    getActiveTranscript(session.user.id),
   ]);
 
   if (active) {
@@ -25,6 +27,14 @@ export default async function Home() {
           topics: nextDay.topics,
         }
       : null;
+
+    const initialMessages =
+      transcript &&
+      transcript.planId === active.id &&
+      nextDay &&
+      transcript.dayNumber === nextDay.dayNumber
+        ? transcript.messages
+        : [];
 
     return (
       <>
@@ -45,6 +55,7 @@ export default async function Home() {
           key={`${active.id}:${nextDay?.dayNumber ?? "done"}`}
           planTitle={active.title}
           today={today}
+          initialMessages={initialMessages}
         />
       </>
     );

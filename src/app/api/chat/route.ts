@@ -10,6 +10,7 @@ import {
 import { getChatModel } from "@/lib/ai";
 import { auth } from "@/lib/auth";
 import { buildSystemPrompt } from "@/lib/system-prompt";
+import { saveTranscript } from "@/server/conversations";
 import {
   adjustUpcomingDays,
   completeDay,
@@ -124,5 +125,19 @@ export async function POST(req: Request) {
     stopWhen: stepCountIs(5),
   });
 
-  return result.toUIMessageStreamResponse();
+  const pendingDayNumber = today?.dayNumber;
+
+  return result.toUIMessageStreamResponse({
+    originalMessages: messages,
+    onFinish: pendingDayNumber
+      ? async ({ messages: finalMessages, isAborted }) => {
+          if (isAborted) return;
+          try {
+            await saveTranscript(userId, plan.id, pendingDayNumber, finalMessages);
+          } catch (err) {
+            console.error("Failed to persist transcript", err);
+          }
+        }
+      : undefined,
+  });
 }

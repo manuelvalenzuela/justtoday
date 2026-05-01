@@ -2,6 +2,10 @@ import "server-only";
 
 import { db } from "@/lib/db";
 import type { ParsedPlan } from "@/lib/plan-schema";
+import {
+  clearOrphanedTranscripts,
+  clearTranscript,
+} from "@/server/conversations";
 
 export async function listPlansForUser(userId: string) {
   return db.plan.findMany({
@@ -70,14 +74,17 @@ export async function completeDay(
     throw new Error("Day not found, already completed, or not yours.");
   }
 
-  await db.day.update({
-    where: { id: day.id },
-    data: {
-      status: "completed",
-      recap,
-      feedback,
-      completedAt: new Date(),
-    },
+  await db.$transaction(async (tx) => {
+    await tx.day.update({
+      where: { id: day.id },
+      data: {
+        status: "completed",
+        recap,
+        feedback,
+        completedAt: new Date(),
+      },
+    });
+    await clearTranscript(tx, planId, dayNumber);
   });
 }
 
@@ -140,6 +147,10 @@ export async function adjustUpcomingDays(
         topics: day.topics,
       })),
     });
+
+    // Preserve the current pending day's transcript (its dayNumber stays at
+    // `expectedFirst` after adaptation). Drop every other transcript row.
+    await clearOrphanedTranscripts(tx, planId, expectedFirst);
 
     return { count: sorted.length, firstDayNumber: expectedFirst };
   });

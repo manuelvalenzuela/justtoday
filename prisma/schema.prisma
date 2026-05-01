@@ -69,10 +69,27 @@ model Plan {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  days Day[]
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days          Day[]
+  conversations DayConversation[]
 
   @@index([userId])
+}
+
+// One transcript per (plan, dayNumber) — only ever the in-progress day.
+// `messages` stores the AI SDK's UIMessage[] verbatim (text + tool parts).
+// Coupled to the SDK's wire shape on purpose; a single JSON column is cheap to migrate.
+model DayConversation {
+  id        String   @id @default(cuid())
+  planId    String
+  dayNumber Int
+  messages  Json
+  updatedAt DateTime @updatedAt
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, dayNumber])
+  @@index([planId])
 }
 
 enum DayStatus {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -19,14 +19,20 @@ export type TodayInfo = {
 export type ChatSurfaceProps = {
   planTitle: string;
   today: TodayInfo | null;
+  initialMessages?: UIMessage[];
 };
 
-export function ChatSurface({ planTitle, today }: ChatSurfaceProps) {
+export function ChatSurface({
+  planTitle,
+  today,
+  initialMessages,
+}: ChatSurfaceProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   const { messages, sendMessage, status, error } = useChat({
+    messages: initialMessages,
     transport: new DefaultChatTransport({ api: "/api/chat" }),
     onFinish: ({ message }) => {
       const planMutated = message.parts.some(
