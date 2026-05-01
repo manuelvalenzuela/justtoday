@@ -1,4 +1,5 @@
 import { signIn } from "@/lib/auth";
+import { RotatingIntro } from "@/components/auth/rotating-intro";
 import { Button } from "@/components/ui/button";
 
 export default function SignInPage() {
@@ -8,9 +9,8 @@ export default function SignInPage() {
         <h1 className="text-center text-2xl font-semibold tracking-tight">
           justtoday
         </h1>
-        <p className="mt-2 text-center text-sm text-muted-foreground">
-          Study one day at a time.
-        </p>
+
+        <RotatingIntro />
 
         <form
           action={async () => {

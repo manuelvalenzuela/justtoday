@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Composer } from "./composer";
 import { Message } from "./message";
@@ -96,6 +96,18 @@ export function ChatSurface({
     return () => observer.disconnect();
   }, []);
 
+  // Dedupe by id before rendering — persisted transcripts can occasionally
+  // contain duplicate message ids from past streaming edge cases, which would
+  // otherwise trip React's "two children with the same key" warning.
+  const renderedMessages = useMemo(() => {
+    const seen = new Set<string>();
+    return messages.filter((m) => {
+      if (seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+  }, [messages]);
+
   const isStreaming = status === "submitted" || status === "streaming";
 
   function handleSubmit() {
@@ -111,7 +123,7 @@ export function ChatSurface({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }
 
-  const hasMessages = messages.length > 0;
+  const hasMessages = renderedMessages.length > 0;
   const showTopChrome = today !== null;
 
   return (
@@ -130,7 +142,7 @@ export function ChatSurface({
           <div className="mx-auto flex w-full max-w-[720px] flex-1 flex-col px-6">
             {hasMessages ? (
               <div className="flex flex-col gap-6 py-6">
-                {messages.map((message) => (
+                {renderedMessages.map((message) => (
                   <Message key={message.id} message={message} />
                 ))}
                 {error ? (

@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { setActivePlanAction, signOutAction } from "@/app/(app)/actions";
+import { AboutPopover } from "@/components/layout/about-popover";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -93,6 +94,10 @@ export function SidebarContent({
             ))}
           </ul>
         )}
+      </div>
+
+      <div className="border-t px-3 py-2">
+        <AboutPopover />
       </div>
 
       <div className="border-t px-3 py-3">
