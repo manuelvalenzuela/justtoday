@@ -1,0 +1,48 @@
+import { jsonSchema } from "ai";
+
+export type ParsedDay = {
+  dayNumber: number;
+  goal: string;
+  topics: string[];
+};
+
+export type ParsedPlan = {
+  title: string;
+  days: ParsedDay[];
+};
+
+export const PLAN_SCHEMA = jsonSchema<ParsedPlan>({
+  type: "object",
+  properties: {
+    title: { type: "string", minLength: 1 },
+    days: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          dayNumber: { type: "integer", minimum: 1 },
+          goal: { type: "string", minLength: 1 },
+          topics: {
+            type: "array",
+            items: { type: "string", minLength: 1 },
+          },
+        },
+        required: ["dayNumber", "goal", "topics"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["title", "days"],
+  additionalProperties: false,
+});
+
+export const PLAN_PARSE_SYSTEM_PROMPT = [
+  "You convert a user's free-form study plan into a structured day-by-day schedule.",
+  "Rules:",
+  "- Output a concise plan title (3-8 words). If the user provided one, keep its intent.",
+  "- Decompose the plan into a sequence of days, numbered starting at 1, contiguous.",
+  "- Each day has one short goal sentence and 2-5 concrete topics. Keep topics specific and actionable.",
+  "- If the input is vague about pacing, use your judgement to split into a reasonable day count (3-10 days for typical plans). Don't invent topics that go beyond the user's intent.",
+  "- Preserve the user's language. If they wrote in Spanish, the days should be in Spanish.",
+].join("\n");

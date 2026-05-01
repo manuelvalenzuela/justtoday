@@ -1,16 +1,14 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Plus, Trash2, Upload, X } from "lucide-react";
-import { useRef, useState, useTransition } from "react";
+import { experimental_useObject as useObject } from "@ai-sdk/react";
+import { ArrowDown, ArrowUp, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  convertPlanAction,
-  savePlanAction,
-} from "@/app/(app)/plans/new/actions";
-import type { ParsedPlan } from "@/lib/plan-llm";
+import { savePlanAction } from "@/app/(app)/plans/new/actions";
+import { PLAN_SCHEMA, type ParsedPlan } from "@/lib/plan-schema";
 
 type Phase = "input" | "preview";
 
@@ -18,9 +16,26 @@ export function NewPlanFlow() {
   const [phase, setPhase] = useState<Phase>("input");
   const [input, setInput] = useState("");
   const [draft, setDraft] = useState<ParsedPlan | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, startSaving] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    object,
+    submit,
+    isLoading: isStreaming,
+    error: streamError,
+    stop,
+  } = useObject({
+    api: "/api/plans/parse",
+    schema: PLAN_SCHEMA,
+  });
+
+  useEffect(() => {
+    if (isStreaming || !object || draft) return;
+    const candidate = sanitizeStreamed(object);
+    if (candidate) setDraft(candidate);
+  }, [isStreaming, object, draft]);
 
   function handleFile(file: File) {
     file.text().then((text) => setInput(text));
@@ -28,26 +43,26 @@ export function NewPlanFlow() {
 
   function handleConvert(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
-    startTransition(async () => {
-      const result = await convertPlanAction(input);
-      if (result.ok) {
-        setDraft(result.draft);
-        setPhase("preview");
-      } else {
-        setError(result.error);
-      }
-    });
+    if (!input.trim()) return;
+    setSaveError(null);
+    setDraft(null);
+    setPhase("preview");
+    submit({ input });
+  }
+
+  function handleBack() {
+    if (isStreaming) stop();
+    setPhase("input");
+    setDraft(null);
+    setSaveError(null);
   }
 
   function handleSave() {
     if (!draft) return;
-    setError(null);
-    startTransition(async () => {
+    setSaveError(null);
+    startSaving(async () => {
       const result = await savePlanAction(input, draft);
-      if (!result.ok) {
-        setError(result.error);
-      }
+      if (!result.ok) setSaveError(result.error);
     });
   }
 
@@ -81,9 +96,7 @@ export function NewPlanFlow() {
 
   function removeDay(idx: number) {
     setDraft((d) =>
-      d
-        ? { ...d, days: renumber(d.days.filter((_, i) => i !== idx)) }
-        : d,
+      d ? { ...d, days: renumber(d.days.filter((_, i) => i !== idx)) } : d,
     );
   }
 
@@ -190,163 +203,205 @@ export function NewPlanFlow() {
           spellCheck={false}
         />
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
         <div className="flex justify-end">
-          <Button type="submit" disabled={pending || !input.trim()}>
-            {pending ? "Reading…" : "Convert"}
+          <Button type="submit" disabled={!input.trim()}>
+            Convert
           </Button>
         </div>
       </form>
     );
   }
 
-  if (!draft) return null;
+  // preview phase — render whichever is freshest: edited draft (post-stream)
+  // or the live partial object during streaming.
+  const display: PartialPlan | ParsedPlan | null = draft ?? (object as PartialPlan | null);
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Here&apos;s how I read your plan. Edit anything that doesn&apos;t look
-          right, then save.
+          {isStreaming
+            ? "Reading your plan…"
+            : "Here's how I read your plan. Edit anything that doesn't look right, then save."}
         </p>
+        {isStreaming ? (
+          <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+        ) : null}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <label htmlFor="plan-title" className="text-sm font-medium">
-          Title
-        </label>
-        <Input
-          id="plan-title"
-          value={draft.title}
-          onChange={(e) => updateTitle(e.target.value)}
-          placeholder="Plan title"
-        />
-      </div>
+      {streamError ? (
+        <p className="text-sm text-destructive">
+          Stream failed: {streamError.message}
+        </p>
+      ) : null}
+
+      {display ? (
+        <div className="flex flex-col gap-2">
+          <label htmlFor="plan-title" className="text-sm font-medium">
+            Title
+          </label>
+          <Input
+            id="plan-title"
+            value={draft?.title ?? display.title ?? ""}
+            onChange={(e) => updateTitle(e.target.value)}
+            placeholder="Plan title"
+            disabled={isStreaming || !draft}
+          />
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-4">
-        {draft.days.map((day, idx) => (
-          <div
-            key={idx}
-            className="flex flex-col gap-3 rounded-lg border border-border bg-card/50 p-4"
+        {(draft?.days ?? display?.days ?? []).map((day, idx) => {
+          const editable = !!draft && !isStreaming;
+          return (
+            <div
+              key={idx}
+              className="flex flex-col gap-3 rounded-lg border border-border bg-card/50 p-4"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Day {idx + 1}</h3>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={!editable || idx === 0}
+                    onClick={() => moveDay(idx, -1)}
+                    aria-label="Move day up"
+                  >
+                    <ArrowUp className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={
+                      !editable ||
+                      idx === (draft?.days.length ?? display?.days?.length ?? 0) - 1
+                    }
+                    onClick={() => moveDay(idx, 1)}
+                    aria-label="Move day down"
+                  >
+                    <ArrowDown className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={!editable}
+                    onClick={() => removeDay(idx)}
+                    aria-label="Remove day"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-muted-foreground">Goal</label>
+                <Input
+                  value={day?.goal ?? ""}
+                  onChange={(e) => updateDay(idx, { goal: e.target.value })}
+                  placeholder="What this day is about"
+                  disabled={!editable}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-muted-foreground">Topics</label>
+                <div className="flex flex-col gap-2">
+                  {(day?.topics ?? []).map((topic, topicIdx) => (
+                    <div key={topicIdx} className="flex items-center gap-1">
+                      <Input
+                        value={topic ?? ""}
+                        onChange={(e) =>
+                          updateTopic(idx, topicIdx, e.target.value)
+                        }
+                        placeholder="Topic"
+                        disabled={!editable}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => removeTopic(idx, topicIdx)}
+                        disabled={!editable}
+                        aria-label="Remove topic"
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="self-start"
+                    disabled={!editable}
+                    onClick={() => addTopic(idx)}
+                  >
+                    <Plus className="size-4" />
+                    Add topic
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {draft && !isStreaming ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="self-start"
+            onClick={addDay}
           >
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Day {idx + 1}</h3>
-              <div className="flex gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={idx === 0}
-                  onClick={() => moveDay(idx, -1)}
-                  aria-label="Move day up"
-                >
-                  <ArrowUp className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={idx === draft.days.length - 1}
-                  onClick={() => moveDay(idx, 1)}
-                  aria-label="Move day down"
-                >
-                  <ArrowDown className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => removeDay(idx)}
-                  aria-label="Remove day"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-muted-foreground">Goal</label>
-              <Input
-                value={day.goal}
-                onChange={(e) => updateDay(idx, { goal: e.target.value })}
-                placeholder="What this day is about"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-muted-foreground">Topics</label>
-              <div className="flex flex-col gap-2">
-                {day.topics.map((topic, topicIdx) => (
-                  <div key={topicIdx} className="flex items-center gap-1">
-                    <Input
-                      value={topic}
-                      onChange={(e) =>
-                        updateTopic(idx, topicIdx, e.target.value)
-                      }
-                      placeholder="Topic"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => removeTopic(idx, topicIdx)}
-                      aria-label="Remove topic"
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="self-start"
-                  onClick={() => addTopic(idx)}
-                >
-                  <Plus className="size-4" />
-                  Add topic
-                </Button>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="self-start"
-          onClick={addDay}
-        >
-          <Plus className="size-4" />
-          Add day
-        </Button>
+            <Plus className="size-4" />
+            Add day
+          </Button>
+        ) : null}
       </div>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {saveError ? (
+        <p className="text-sm text-destructive">{saveError}</p>
+      ) : null}
 
       <div className="flex justify-between">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            setPhase("input");
-            setDraft(null);
-            setError(null);
-          }}
-          disabled={pending}
-        >
-          Back
+        <Button type="button" variant="ghost" onClick={handleBack} disabled={saving}>
+          {isStreaming ? "Cancel" : "Back"}
         </Button>
-        <Button onClick={handleSave} disabled={pending}>
-          {pending ? "Saving…" : "Save plan"}
+        <Button onClick={handleSave} disabled={!draft || isStreaming || saving}>
+          {saving ? "Saving…" : "Save plan"}
         </Button>
       </div>
     </div>
   );
 }
 
+type PartialDay = Partial<ParsedPlan["days"][number]>;
+type PartialPlan = { title?: string; days?: PartialDay[] };
+
 function renumber(days: ParsedPlan["days"]): ParsedPlan["days"] {
   return days.map((day, idx) => ({ ...day, dayNumber: idx + 1 }));
+}
+
+function sanitizeStreamed(obj: unknown): ParsedPlan | null {
+  if (!obj || typeof obj !== "object") return null;
+  const o = obj as PartialPlan;
+  if (typeof o.title !== "string" || !o.title.trim()) return null;
+  if (!Array.isArray(o.days) || o.days.length === 0) return null;
+
+  const days: ParsedPlan["days"] = [];
+  for (const [idx, raw] of o.days.entries()) {
+    if (!raw || typeof raw.goal !== "string" || !raw.goal.trim()) return null;
+    const topics = Array.isArray(raw.topics)
+      ? raw.topics.filter(
+          (t): t is string => typeof t === "string" && t.trim().length > 0,
+        )
+      : [];
+    days.push({ dayNumber: idx + 1, goal: raw.goal.trim(), topics });
+  }
+
+  return { title: o.title.trim(), days };
 }

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { db } from "@/lib/db";
-import type { ParsedPlan } from "@/lib/plan-llm";
+import type { ParsedPlan } from "@/lib/plan-schema";
 
 export async function listPlansForUser(userId: string) {
   return db.plan.findMany({

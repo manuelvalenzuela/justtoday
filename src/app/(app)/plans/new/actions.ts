@@ -4,34 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
-import { parsePlanWithLLM, type ParsedPlan } from "@/lib/plan-llm";
+import type { ParsedPlan } from "@/lib/plan-schema";
 import { createPlan } from "@/server/plans";
-
-export type ConvertResult =
-  | { ok: true; draft: ParsedPlan }
-  | { ok: false; error: string };
-
-export async function convertPlanAction(input: string): Promise<ConvertResult> {
-  const session = await auth();
-  if (!session?.user) {
-    return { ok: false, error: "You must be signed in." };
-  }
-  const trimmed = input.trim();
-  if (!trimmed) {
-    return { ok: false, error: "Paste a plan first." };
-  }
-
-  try {
-    const draft = await parsePlanWithLLM(trimmed);
-    return { ok: true, draft };
-  } catch (err) {
-    console.error("parsePlanWithLLM failed", err);
-    return {
-      ok: false,
-      error: "Could not interpret that plan. Try rephrasing or adding more detail.",
-    };
-  }
-}
 
 export type SaveResult = { ok: true } | { ok: false; error: string };
 
