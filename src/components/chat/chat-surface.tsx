@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Composer } from "./composer";
 import { Message } from "./message";
+import { ScrollToBottomPill } from "./scroll-to-bottom-pill";
 import { TodayPill } from "./today-pill";
 import { TodaySummary } from "./today-summary";
 
@@ -22,13 +23,19 @@ export type ChatSurfaceProps = {
   initialMessages?: UIMessage[];
 };
 
+const NEAR_BOTTOM_THRESHOLD = 120;
+
 export function ChatSurface({
   planTitle,
   today,
   initialMessages,
 }: ChatSurfaceProps) {
   const [input, setInput] = useState("");
+  const surfaceRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const composerWrapperRef = useRef<HTMLDivElement>(null);
+  const nearBottomRef = useRef(true);
+  const [showScrollPill, setShowScrollPill] = useState(false);
   const router = useRouter();
 
   const { messages, sendMessage, status, error } = useChat({
@@ -46,11 +53,48 @@ export function ChatSurface({
     },
   });
 
+  // Track whether the user is near the bottom so we can decide whether to
+  // auto-scroll on new content. If they've scrolled up to read context, we
+  // don't yank them down on every streamed token.
   useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const near = distance <= NEAR_BOTTOM_THRESHOLD;
+      nearBottomRef.current = near;
+      setShowScrollPill(!near);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    return () => el.removeEventListener("scroll", update);
+  }, []);
+
+  // Auto-scroll on new content only if the user was already near the bottom.
+  useEffect(() => {
+    if (!nearBottomRef.current) return;
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [messages]);
+
+  // Measure composer height → CSS var so the message list reserves the right
+  // amount of bottom space (and the scroll-to-bottom pill rides above it).
+  useEffect(() => {
+    const surface = surfaceRef.current;
+    const composer = composerWrapperRef.current;
+    if (!surface || !composer) return;
+    const apply = () => {
+      surface.style.setProperty(
+        "--composer-h",
+        `${composer.offsetHeight}px`,
+      );
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(composer);
+    return () => observer.disconnect();
+  }, []);
 
   const isStreaming = status === "submitted" || status === "streaming";
 
@@ -61,57 +105,99 @@ export function ChatSurface({
     setInput("");
   }
 
+  function scrollToBottom() {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }
+
+  const hasMessages = messages.length > 0;
+  const showTopChrome = today !== null;
+
   return (
-    <div className="flex flex-1 min-h-0 min-w-0 flex-col">
-      <header className="hidden md:flex h-14 shrink-0 items-center border-b px-4 md:px-6">
-        {today ? (
-          <TodayPill
-            dayNumber={today.dayNumber}
-            goal={today.goal}
-            topics={today.topics}
-          />
-        ) : (
-          <h2 className="text-sm font-medium tracking-tight">{planTitle}</h2>
-        )}
-      </header>
-
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-6 py-8">
-          {messages.length === 0 ? (
-            today ? (
-              <TodaySummary
-                dayNumber={today.dayNumber}
-                goal={today.goal}
-                topics={today.topics}
-                className="pt-10"
-              />
-            ) : (
-              <div className="pt-12 text-center">
-                <p className="text-base text-muted-foreground">
-                  All days complete. Add a new plan to keep going.
-                </p>
+    <div
+      ref={surfaceRef}
+      className="relative flex min-h-0 min-w-0 flex-1 flex-col"
+    >
+      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto">
+        <div
+          className="flex min-h-full flex-col"
+          style={{
+            paddingTop: showTopChrome ? "3.5rem" : "2rem",
+            paddingBottom: `calc(var(--composer-h, 4.5rem) + 3rem)`,
+          }}
+        >
+          <div className="mx-auto flex w-full max-w-[720px] flex-1 flex-col px-6">
+            {hasMessages ? (
+              <div className="flex flex-col gap-6 py-6">
+                {messages.map((message) => (
+                  <Message key={message.id} message={message} />
+                ))}
+                {error ? (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                    {error.message || "Something went wrong. Try again."}
+                  </div>
+                ) : null}
               </div>
-            )
-          ) : (
-            messages.map((message) => (
-              <Message key={message.id} message={message} />
-            ))
-          )}
-
-          {error ? (
-            <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {error.message || "Something went wrong. Try again."}
-            </div>
-          ) : null}
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center py-6">
+                {today ? (
+                  <TodaySummary
+                    dayNumber={today.dayNumber}
+                    goal={today.goal}
+                    topics={today.topics}
+                    className="w-full"
+                  />
+                ) : (
+                  <p className="text-center text-base text-muted-foreground">
+                    All days complete. Add a new plan to keep going.
+                  </p>
+                )}
+                {error ? (
+                  <div className="mt-6 w-full rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                    {error.message || "Something went wrong. Try again."}
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <Composer
-        value={input}
-        onChange={setInput}
-        onSubmit={handleSubmit}
-        disabled={isStreaming}
-      />
+      {showTopChrome ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 hidden md:block">
+          <div className="pointer-events-auto bg-background">
+            <div className="flex h-14 items-center px-4 md:px-6">
+              {today ? (
+                <TodayPill
+                  dayNumber={today.dayNumber}
+                  goal={today.goal}
+                  topics={today.topics}
+                />
+              ) : (
+                <h2 className="truncate text-sm font-medium tracking-tight">
+                  {planTitle}
+                </h2>
+              )}
+            </div>
+          </div>
+          <div className="h-8 bg-gradient-to-b from-background to-transparent" />
+        </div>
+      ) : null}
+
+      <ScrollToBottomPill visible={showScrollPill} onClick={scrollToBottom} />
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
+        <div className="h-8 bg-gradient-to-t from-background to-transparent" />
+        <div ref={composerWrapperRef} className="pointer-events-auto bg-background">
+          <Composer
+            value={input}
+            onChange={setInput}
+            onSubmit={handleSubmit}
+            disabled={isStreaming}
+          />
+        </div>
+      </div>
     </div>
   );
 }
