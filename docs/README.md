@@ -12,3 +12,6 @@ Specs and plans for the justtoday study-tracker app live here.
 
 - [core-spec.md](./core-spec.md) — v1 product and technical spec.
 - [ops-build-phases.md](./ops-build-phases.md) — phased build plan and current status.
+- [feature-mobile-friendly-ui.md](./feature-mobile-friendly-ui.md) — mobile drawer, pinned composer, safe-area insets.
+- [feature-persist-current-day-conversation.md](./feature-persist-current-day-conversation.md) — store the active day's chat so it survives reloads and device switches.
+- [feature-day-detail-view.md](./feature-day-detail-view.md) — surface today's goal + topics in the empty state and a header pill.
