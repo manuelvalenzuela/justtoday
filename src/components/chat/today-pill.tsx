@@ -23,7 +23,7 @@ export function TodayPill({ dayNumber, goal, topics }: TodayPillProps) {
         className="group inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium tracking-tight text-foreground/90 outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-muted"
         aria-label={`Day ${dayNumber} details`}
       >
-        <span className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+        <span className="shrink-0 whitespace-nowrap text-[0.7rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Day {dayNumber}
         </span>
         <span aria-hidden className="text-muted-foreground/50">

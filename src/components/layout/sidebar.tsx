@@ -2,11 +2,10 @@ import { LogOut, Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
-import { setActivePlanAction } from "@/app/(app)/actions";
+import { setActivePlanAction, signOutAction } from "@/app/(app)/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { signOut } from "@/lib/auth";
 
 export type SidebarUser = {
   name?: string | null;
@@ -29,6 +28,22 @@ export function Sidebar({
 }) {
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
+      <SidebarContent user={user} plans={plans} />
+    </aside>
+  );
+}
+
+export function SidebarContent({
+  user,
+  plans,
+  onPlanSelect,
+}: {
+  user: SidebarUser;
+  plans: SidebarPlan[];
+  onPlanSelect?: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="px-5 py-4 border-b">
         <h1 className="text-base font-semibold tracking-tight">justtoday</h1>
       </div>
@@ -41,6 +56,7 @@ export function Sidebar({
           <Link
             href="/plans/new"
             aria-label="New plan"
+            onClick={onPlanSelect}
             className={buttonVariants({
               variant: "ghost",
               size: "icon",
@@ -59,7 +75,7 @@ export function Sidebar({
           <ul className="mt-2 flex flex-col gap-0.5">
             {plans.map((plan) => (
               <li key={plan.id}>
-                <form action={setActivePlanAction}>
+                <form action={setActivePlanAction} onSubmit={onPlanSelect}>
                   <input type="hidden" name="planId" value={plan.id} />
                   <button
                     type="submit"
@@ -106,12 +122,7 @@ export function Sidebar({
 
         <div className="mt-3 flex items-center justify-between">
           <ThemeToggle />
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/signin" });
-            }}
-          >
+          <form action={signOutAction}>
             <Button
               type="submit"
               variant="ghost"
@@ -123,6 +134,6 @@ export function Sidebar({
           </form>
         </div>
       </div>
-    </aside>
+    </div>
   );
 }

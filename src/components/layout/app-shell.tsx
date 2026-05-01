@@ -14,7 +14,7 @@ export function AppShell({
   return (
     <div className="flex h-dvh">
       <Sidebar user={user} plans={plans} />
-      <main className="flex-1 flex flex-col">{children}</main>
+      <main className="flex flex-1 min-w-0 flex-col">{children}</main>
     </div>
   );
 }

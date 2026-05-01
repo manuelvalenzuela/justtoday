@@ -52,7 +52,10 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     const canSend = !disabled && value.trim().length > 0;
 
     return (
-      <form onSubmit={handleSubmit} className="px-4 pb-4 pt-2">
+      <form
+        onSubmit={handleSubmit}
+        className="px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]"
+      >
         <div
           className={cn(
             "mx-auto flex w-full max-w-[720px] items-end gap-2 rounded-2xl border bg-background px-3 py-2 shadow-sm transition-colors",

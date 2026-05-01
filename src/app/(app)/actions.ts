@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { auth } from "@/lib/auth";
+import { auth, signOut } from "@/lib/auth";
 import { setActivePlan } from "@/server/plans";
 
 export async function setActivePlanAction(formData: FormData) {
@@ -14,4 +14,8 @@ export async function setActivePlanAction(formData: FormData) {
 
   await setActivePlan(session.user.id, planId);
   revalidatePath("/", "layout");
+}
+
+export async function signOutAction() {
+  await signOut({ redirectTo: "/signin" });
 }
