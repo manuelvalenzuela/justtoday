@@ -78,9 +78,10 @@ This doc is the source of truth for phase scope and status. Update the status li
 **Delivers:** Vercel AI SDK v6 (`ai`, `@ai-sdk/azure`, `@ai-sdk/react`) installed. `src/lib/ai.ts` lazily builds an Azure OpenAI provider from `AZURE_AI_ENDPOINT` + `AZURE_AI_API_KEY` + `AZURE_AI_DEPLOYMENT` + `AZURE_AI_API_VERSION` (lazy so builds don't need the key). `src/app/api/chat/route.ts` is the streaming endpoint: authenticates via Auth.js, fetches the active plan, builds the system prompt, converts UIMessages to model messages, and returns `result.toUIMessageStreamResponse()`. `ChatSurface` swapped from local state to `useChat` (`@ai-sdk/react`) over a `DefaultChatTransport` pointed at `/api/chat`; composer is disabled while `status` is `submitted`/`streaming` and surfaces transport errors inline. `src/lib/system-prompt.ts` builds the persona — short/warm tone, daily rhythm (check-in / study / close-out), today's day + goal + topics, and a hint about the most recent completed day.
 
 **Notes:**
-- Anthropic Claude models are not available on Foundry in any region this user can pick from, so the v1 default model is **GPT-5.4 Pro** instead of Claude Opus 4.7. The env contract still abstracts the deployment so we can swap later without code changes.
+- Anthropic Claude models are not available on Foundry in any region this user can pick from, so v1 runs on Azure OpenAI's GPT-5.4 family instead of Claude Opus 4.7. The env contract still abstracts the deployment (`AZURE_AI_DEPLOYMENT`) so we can swap later without code changes.
+- Started on **GPT-5.4 Pro** for stronger tool-call reasoning, then switched to plain **GPT-5.4** post-P9 — Pro's pre-stream thinking added 20–60s of dead time to every chat turn, which broke the "polished as ChatGPT" feel from `core-spec.md` §6. Non-Pro streams the first token within ~1s. The Pro deployment was deleted from Foundry.
 - The Foundry endpoint is the `cognitiveservices.azure.com` shape — `@ai-sdk/azure` connects via `baseURL: "${endpoint}/openai"` so the SDK's `/v1{path}` suffix lands on the right route.
-- `AZURE_AI_API_VERSION` is **`preview`**, not a dated string. GPT-5.4 Pro is served via the Azure Responses API, which only the rolling `preview` channel supports right now (`2024-04-01-preview` returns `BadRequest: API version not supported`).
+- `AZURE_AI_API_VERSION` is **`preview`**, not a dated string. The Azure Responses API used by the GPT-5.4 family only supports the rolling `preview` channel right now (`2024-04-01-preview` returns `BadRequest: API version not supported`).
 - Assistant bubbles render through `react-markdown` + `remark-gfm` with `@tailwindcss/typography` for prose styling. Streaming works as expected — token-by-token arrival, composer disabled mid-stream.
 - Plan adaptation tool calls land in P8; for now the system prompt explicitly says "plan adjustments are handled by a separate step, not by you".
 
@@ -95,7 +96,7 @@ This doc is the source of truth for phase scope and status. Update the status li
 
 **Notes:**
 - Verified end-to-end via Playwright with a seeded smoke user: check-in streamed today's goal/plan, "done — practiced..." triggered `closeOutDay`, the DB row went from `status=pending` to `completed` with a synthesised recap + verbatim feedback + `completedAt`, and the UI rolled forward to "Day 2: Order food in a café" with an empty chat.
-- The system prompt (`src/lib/system-prompt.ts`) gates tool use explicitly: "Do NOT call any tool" during check-in/study, and "call `closeOutDay` exactly once" at user signal — `recap` in third person, `feedback` verbatim. Without that gating GPT-5.4 Pro tended to either skip the tool or call it during check-in.
+- The system prompt (`src/lib/system-prompt.ts`) gates tool use explicitly: "Do NOT call any tool" during check-in/study, and "call `closeOutDay` exactly once" at user signal — `recap` in third person, `feedback` verbatim. Without that gating the model tended to either skip the tool or call it during check-in.
 - Plan adaptation tool calls land in P8; `closeOutDay` deliberately does not touch `days` rows beyond marking today complete.
 
 ## Phase 8 — Plan adaptation
@@ -108,7 +109,7 @@ This doc is the source of truth for phase scope and status. Update the status li
 - Smoke-tested via Playwright with a 4-day Spanish plan: closed out Day 1 with feedback that signalled struggle ("teens still really shaky, need more drilling"). The model called `closeOutDay`, then `adjustUpcomingDays` with a new 4-day sequence — inserted "Day 2: Stabilize numbers 1–20" as a catch-up day, with the original days 2–4 pushed back to days 3–5. `originalMarkdown` unchanged in the DB; UI rolled forward to the new Day 2 with empty chat.
 - Tool registration uses two `tool()` calls into separate `?: undefined` locals and spreads them into the final `tools` object — typing a single `Record<string, ReturnType<typeof tool>>` collapses the input schemas to `never` and breaks `execute` typing.
 - Aggressive-scope confirmation is enforced **only via the system prompt**, not by a server-side gate. The tool itself accepts any contiguous future-day sequence; the model is instructed to delay the call until the user says yes. This keeps the v1 wire simple and matches `core-spec.md` §4 ("requires the LLM to propose the change in chat and get explicit user confirmation").
-- The end-to-end response (close-out + adapt + ack) takes ~7 minutes wall-clock on the current GPT-5.4 Pro deployment because of the double tool call; functional but slow. Worth revisiting in P9 if it becomes a UX issue.
+- The end-to-end response (close-out + adapt + ack) was ~7 minutes wall-clock on GPT-5.4 Pro because of the double tool call. Resolved post-P9 by switching the default deployment to non-Pro GPT-5.4 (see Phase 6 notes); close-out + adapt + ack now completes in seconds.
 
 ## Phase 9 — Deploy
 

@@ -104,7 +104,7 @@ UI tooling:
 | Auth | Auth.js (NextAuth) with Google provider |
 | Database | Azure Database for PostgreSQL Flexible Server (Burstable B1ms) |
 | Hosting | Azure App Service B1 |
-| AI | Azure AI Foundry — default model **Claude Opus 4.7**, configurable via env var |
+| AI | Azure AI Foundry — default model **GPT-5.4** (Anthropic models aren't available on Foundry in this user's regions), configurable via `AZURE_AI_DEPLOYMENT` |
 
 ## 8. Deployment
 
