@@ -22,7 +22,7 @@ function createModel() {
     baseURL: `${endpoint.replace(/\/$/, "")}/openai`,
   });
 
-  return azure(process.env.AZURE_AI_DEPLOYMENT ?? "gpt-5.4-pro");
+  return azure(process.env.AZURE_AI_DEPLOYMENT ?? "gpt-5.4");
 }
 
 export function getChatModel() {
