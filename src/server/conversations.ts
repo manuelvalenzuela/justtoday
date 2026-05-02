@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Prisma, PrismaClient } from "@prisma/client";
-import type { UIMessage } from "ai";
+import { generateId, type UIMessage } from "ai";
 
 import { db } from "@/lib/db";
 
@@ -31,10 +31,18 @@ export async function getActiveTranscript(
     select: { messages: true },
   });
 
+  const stored = (row?.messages as UIMessage[] | undefined) ?? [];
+
+  // Heal pre-fix transcripts: assistant messages saved before generateMessageId
+  // was wired up have id="", which trips React's duplicate-key check once more
+  // than one accumulates. Assigning a fresh id here is enough — the next save
+  // (whenever the user sends another message) writes back the healed ids.
+  const messages = stored.map((m) => (m.id ? m : { ...m, id: generateId() }));
+
   return {
     planId: plan.id,
     dayNumber: pending.dayNumber,
-    messages: (row?.messages as UIMessage[] | undefined) ?? [],
+    messages,
   };
 }
 

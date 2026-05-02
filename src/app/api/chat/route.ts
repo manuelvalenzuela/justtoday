@@ -1,5 +1,6 @@
 import {
   convertToModelMessages,
+  generateId,
   jsonSchema,
   stepCountIs,
   streamText,
@@ -129,6 +130,7 @@ export async function POST(req: Request) {
 
   return result.toUIMessageStreamResponse({
     originalMessages: messages,
+    generateMessageId: generateId,
     onFinish: pendingDayNumber
       ? async ({ messages: finalMessages, isAborted }) => {
           if (isAborted) return;
