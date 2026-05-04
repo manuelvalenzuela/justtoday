@@ -15,3 +15,4 @@ Specs and plans for the justtoday study-tracker app live here.
 - [feature-mobile-friendly-ui.md](./feature-mobile-friendly-ui.md) — mobile drawer, pinned composer, safe-area insets.
 - [feature-persist-current-day-conversation.md](./feature-persist-current-day-conversation.md) — store the active day's chat so it survives reloads and device switches.
 - [feature-day-detail-view.md](./feature-day-detail-view.md) — surface today's goal + topics in the empty state and a header pill.
+- [feature-plan-refinement.md](./feature-plan-refinement.md) — reframe original input from preview, surface plan length, and add a "let's define it together" refinement chat (draft).
