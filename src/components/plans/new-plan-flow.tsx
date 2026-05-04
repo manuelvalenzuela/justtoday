@@ -1,6 +1,7 @@
 "use client";
 
 import { experimental_useObject as useObject } from "@ai-sdk/react";
+import type { UIMessage } from "ai";
 import {
   ArrowDown,
   ArrowUp,
@@ -20,7 +21,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { savePlanAction } from "@/app/(app)/plans/new/actions";
 import { PLAN_SCHEMA, type ParsedPlan } from "@/lib/plan-schema";
 
-type Phase = "input" | "preview";
+import { RefineChat } from "./refine-chat";
+
+type Phase = "input" | "refine" | "preview";
 
 const MAX_TARGET_DAYS = 60;
 
@@ -33,6 +36,9 @@ export function NewPlanFlow() {
   const [lastSubmittedInput, setLastSubmittedInput] = useState<string | null>(
     null,
   );
+  const [refinementMessages, setRefinementMessages] = useState<
+    UIMessage[] | null
+  >(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,10 +78,30 @@ export function NewPlanFlow() {
     setDraft(null);
     setTargetDays(null);
     setInputExpanded(false);
+    setRefinementMessages(null);
     lastStreamedSnapshotRef.current = null;
     setLastSubmittedInput(input);
     setPhase("preview");
     submit({ input });
+  }
+
+  function handleStartRefine() {
+    if (!input.trim()) return;
+    setSaveError(null);
+    setPhase("refine");
+  }
+
+  function handleRefineGenerate(summary: string, messages: UIMessage[]) {
+    setSaveError(null);
+    setDraft(null);
+    setTargetDays(null);
+    setInputExpanded(false);
+    lastStreamedSnapshotRef.current = null;
+    setInput(summary);
+    setLastSubmittedInput(summary);
+    setRefinementMessages(messages);
+    setPhase("preview");
+    submit({ input: summary });
   }
 
   function handleBack() {
@@ -85,6 +111,7 @@ export function NewPlanFlow() {
     setTargetDays(null);
     setInputExpanded(false);
     setSaveError(null);
+    setRefinementMessages(null);
     lastStreamedSnapshotRef.current = null;
     setLastSubmittedInput(null);
   }
@@ -125,6 +152,7 @@ export function NewPlanFlow() {
     setDraft(null);
     lastStreamedSnapshotRef.current = null;
     setLastSubmittedInput(input);
+    setInputExpanded(true);
     submit({ input, days: targetDays ?? undefined });
   }
 
@@ -132,7 +160,7 @@ export function NewPlanFlow() {
     if (!draft) return;
     setSaveError(null);
     startSaving(async () => {
-      const result = await savePlanAction(input, draft);
+      const result = await savePlanAction(input, draft, refinementMessages);
       if (!result.ok) setSaveError(result.error);
     });
   }
@@ -269,17 +297,34 @@ export function NewPlanFlow() {
           id="plan-input"
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder="Paste anything: a structured markdown plan, a ChatGPT outline, a list of topics, or just a few sentences about what you want to learn and over how many days."
+          placeholder="Describe briefly what you want to learn — a few sentences is enough. You can also paste a structured outline or upload a markdown file."
           className="min-h-[320px] text-sm"
           spellCheck={false}
         />
 
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            type="button"
+            onClick={handleStartRefine}
+            disabled={!input.trim()}
+          >
+            Let&apos;s define it together
+          </Button>
           <Button type="submit" disabled={!input.trim()}>
             Convert
           </Button>
         </div>
       </form>
+    );
+  }
+
+  if (phase === "refine") {
+    return (
+      <RefineChat
+        seedInput={input}
+        onBack={handleBack}
+        onGenerate={handleRefineGenerate}
+      />
     );
   }
 

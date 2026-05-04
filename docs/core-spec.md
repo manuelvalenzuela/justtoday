@@ -28,7 +28,9 @@ There is no required input format — markdown with `## Day N` / `**Goal:**` wor
 ### 2.3 Input is import-only; the database is the source of truth
 
 - The free-form input is parsed once via the LLM, the user edits the preview, and from then on the rows in the `days` table are the canonical state.
-- The **verbatim original input** is stored on the plan record so the user can always compare to what they started with.
+- The **canonical input** is stored on the plan record so the user can always compare to what they started with.
+  - On the direct path (paste/upload → Convert), this is the **verbatim original text**.
+  - On the refinement path ("Let's define it together"), this is the **summary of the refinement conversation** that was fed to the parser. The full transcript is persisted separately on `PlanRefinementChat` so the conversation provenance is recoverable.
 - Adaptations modify rows in `days` directly. There is no "current plan" textual field — if the UI ever needs to show the current plan as text, it's rendered on-the-fly from `days`.
 - Why this split: users can author plans wherever they like (Notion, Obsidian, ChatGPT output) and own a portable file outside the app, while the app avoids the pain of round-tripping edits through any specific input format.
 

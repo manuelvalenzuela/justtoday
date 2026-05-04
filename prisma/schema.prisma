@@ -69,11 +69,27 @@ model Plan {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  days          Day[]
-  conversations DayConversation[]
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days            Day[]
+  conversations   DayConversation[]
+  refinementChats PlanRefinementChat[]
 
   @@index([userId])
+}
+
+// One row per plan that was authored via the refinement chat path.
+// `messages` stores the full UIMessage[] transcript verbatim, mirroring the
+// shape used in DayConversation. The summary that became `Plan.originalMarkdown`
+// is reconstructable from the transcript, so we don't duplicate it here.
+model PlanRefinementChat {
+  id        String   @id @default(cuid())
+  planId    String
+  messages  Json
+  createdAt DateTime @default(now())
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
 }
 
 // One transcript per (plan, dayNumber) — only ever the in-progress day.

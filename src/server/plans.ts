@@ -1,5 +1,8 @@
 import "server-only";
 
+import type { Prisma } from "@prisma/client";
+import type { UIMessage } from "ai";
+
 import { db } from "@/lib/db";
 import type { ParsedPlan } from "@/lib/plan-schema";
 import {
@@ -26,6 +29,7 @@ export async function createPlan(
   userId: string,
   originalInput: string,
   draft: ParsedPlan,
+  refinementMessages?: UIMessage[] | null,
 ) {
   return db.$transaction(async (tx) => {
     await tx.plan.updateMany({
@@ -50,6 +54,15 @@ export async function createPlan(
         topics: day.topics,
       })),
     });
+
+    if (refinementMessages && refinementMessages.length > 0) {
+      await tx.planRefinementChat.create({
+        data: {
+          planId: plan.id,
+          messages: refinementMessages as unknown as Prisma.InputJsonValue,
+        },
+      });
+    }
 
     return plan;
   });
