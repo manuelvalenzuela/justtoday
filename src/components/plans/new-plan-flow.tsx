@@ -1,7 +1,16 @@
 "use client";
 
 import { experimental_useObject as useObject } from "@ai-sdk/react";
-import { ArrowDown, ArrowUp, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,13 +21,17 @@ import { PLAN_SCHEMA, type ParsedPlan } from "@/lib/plan-schema";
 
 type Phase = "input" | "preview";
 
+const MAX_TARGET_DAYS = 60;
+
 export function NewPlanFlow() {
   const [phase, setPhase] = useState<Phase>("input");
   const [input, setInput] = useState("");
   const [draft, setDraft] = useState<ParsedPlan | null>(null);
+  const [targetDays, setTargetDays] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastStreamedSnapshotRef = useRef<string | null>(null);
 
   const {
     object,
@@ -34,7 +47,12 @@ export function NewPlanFlow() {
   useEffect(() => {
     if (isStreaming || !object || draft) return;
     const candidate = sanitizeStreamed(object);
-    if (candidate) setDraft(candidate);
+    if (!candidate) return;
+    setDraft(candidate);
+    lastStreamedSnapshotRef.current = JSON.stringify(candidate);
+    setTargetDays((current) =>
+      current === null ? candidate.days.length : current,
+    );
   }, [isStreaming, object, draft]);
 
   function handleFile(file: File) {
@@ -46,6 +64,8 @@ export function NewPlanFlow() {
     if (!input.trim()) return;
     setSaveError(null);
     setDraft(null);
+    setTargetDays(null);
+    lastStreamedSnapshotRef.current = null;
     setPhase("preview");
     submit({ input });
   }
@@ -54,7 +74,30 @@ export function NewPlanFlow() {
     if (isStreaming) stop();
     setPhase("input");
     setDraft(null);
+    setTargetDays(null);
     setSaveError(null);
+    lastStreamedSnapshotRef.current = null;
+  }
+
+  function isDraftDirty(): boolean {
+    if (!draft || !lastStreamedSnapshotRef.current) return false;
+    return JSON.stringify(draft) !== lastStreamedSnapshotRef.current;
+  }
+
+  function handleReshape() {
+    if (isStreaming || saving || !targetDays || targetDays < 1) return;
+    if (
+      isDraftDirty() &&
+      !window.confirm(
+        "This will replace the current plan, including your edits. Continue?",
+      )
+    ) {
+      return;
+    }
+    setSaveError(null);
+    setDraft(null);
+    lastStreamedSnapshotRef.current = null;
+    submit({ input, days: targetDays });
   }
 
   function handleSave() {
@@ -215,6 +258,12 @@ export function NewPlanFlow() {
   // preview phase — render whichever is freshest: edited draft (post-stream)
   // or the live partial object during streaming.
   const display: PartialPlan | ParsedPlan | null = draft ?? (object as PartialPlan | null);
+  const actualDays = draft?.days.length ?? display?.days?.length ?? 0;
+  const showDrift =
+    !!draft &&
+    !isStreaming &&
+    targetDays !== null &&
+    targetDays !== actualDays;
 
   return (
     <div className="flex flex-col gap-6">
@@ -236,17 +285,74 @@ export function NewPlanFlow() {
       ) : null}
 
       {display ? (
-        <div className="flex flex-col gap-2">
-          <label htmlFor="plan-title" className="text-sm font-medium">
-            Title
-          </label>
-          <Input
-            id="plan-title"
-            value={draft?.title ?? display.title ?? ""}
-            onChange={(e) => updateTitle(e.target.value)}
-            placeholder="Plan title"
-            disabled={isStreaming || !draft}
-          />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex flex-1 flex-col gap-2">
+            <label htmlFor="plan-title" className="text-sm font-medium">
+              Title
+            </label>
+            <Input
+              id="plan-title"
+              value={draft?.title ?? display.title ?? ""}
+              onChange={(e) => updateTitle(e.target.value)}
+              placeholder="Plan title"
+              disabled={isStreaming || !draft}
+            />
+          </div>
+          <div className="flex flex-col gap-2 sm:w-44">
+            <label htmlFor="plan-days" className="text-sm font-medium">
+              Length
+            </label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="plan-days"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={MAX_TARGET_DAYS}
+                value={targetDays ?? ""}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    setTargetDays(null);
+                    return;
+                  }
+                  const parsed = Number.parseInt(raw, 10);
+                  if (Number.isFinite(parsed)) {
+                    setTargetDays(
+                      Math.min(MAX_TARGET_DAYS, Math.max(1, parsed)),
+                    );
+                  }
+                }}
+                placeholder="—"
+                disabled={isStreaming || !draft}
+                className="w-20"
+              />
+              <span className="text-sm text-muted-foreground">
+                days{showDrift ? ` (actual: ${actualDays})` : ""}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleReshape}
+                disabled={
+                  isStreaming ||
+                  saving ||
+                  !draft ||
+                  !targetDays ||
+                  targetDays === actualDays
+                }
+                aria-label={
+                  targetDays
+                    ? `Re-shape plan to ${targetDays} day${targetDays === 1 ? "" : "s"}`
+                    : "Re-shape plan to this length"
+                }
+                title="Re-shape plan to this length"
+              >
+                <RefreshCw className="size-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       ) : null}
 
