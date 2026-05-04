@@ -4,6 +4,7 @@ import { experimental_useObject as useObject } from "@ai-sdk/react";
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   Loader2,
   Plus,
   RefreshCw,
@@ -28,9 +29,14 @@ export function NewPlanFlow() {
   const [input, setInput] = useState("");
   const [draft, setDraft] = useState<ParsedPlan | null>(null);
   const [targetDays, setTargetDays] = useState<number | null>(null);
+  const [inputExpanded, setInputExpanded] = useState(false);
+  const [lastSubmittedInput, setLastSubmittedInput] = useState<string | null>(
+    null,
+  );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewFileInputRef = useRef<HTMLInputElement>(null);
   const lastStreamedSnapshotRef = useRef<string | null>(null);
 
   const {
@@ -65,7 +71,9 @@ export function NewPlanFlow() {
     setSaveError(null);
     setDraft(null);
     setTargetDays(null);
+    setInputExpanded(false);
     lastStreamedSnapshotRef.current = null;
+    setLastSubmittedInput(input);
     setPhase("preview");
     submit({ input });
   }
@@ -75,8 +83,10 @@ export function NewPlanFlow() {
     setPhase("input");
     setDraft(null);
     setTargetDays(null);
+    setInputExpanded(false);
     setSaveError(null);
     lastStreamedSnapshotRef.current = null;
+    setLastSubmittedInput(null);
   }
 
   function isDraftDirty(): boolean {
@@ -97,7 +107,25 @@ export function NewPlanFlow() {
     setSaveError(null);
     setDraft(null);
     lastStreamedSnapshotRef.current = null;
+    setLastSubmittedInput(input);
     submit({ input, days: targetDays });
+  }
+
+  function handleReRun() {
+    if (isStreaming || saving || !input.trim()) return;
+    if (
+      isDraftDirty() &&
+      !window.confirm(
+        "This will replace the current plan, including your edits. Continue?",
+      )
+    ) {
+      return;
+    }
+    setSaveError(null);
+    setDraft(null);
+    lastStreamedSnapshotRef.current = null;
+    setLastSubmittedInput(input);
+    submit({ input, days: targetDays ?? undefined });
   }
 
   function handleSave() {
@@ -264,6 +292,8 @@ export function NewPlanFlow() {
     !isStreaming &&
     targetDays !== null &&
     targetDays !== actualDays;
+  const inputChangedSinceSubmit =
+    lastSubmittedInput !== null && input.trim() !== lastSubmittedInput.trim();
 
   return (
     <div className="flex flex-col gap-6">
@@ -283,6 +313,78 @@ export function NewPlanFlow() {
           Stream failed: {streamError.message}
         </p>
       ) : null}
+
+      <div className="rounded-lg border border-border bg-card/50">
+        <button
+          type="button"
+          onClick={() => setInputExpanded((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-sm hover:bg-muted/50"
+          aria-expanded={inputExpanded}
+          aria-controls="plan-original-input-panel"
+        >
+          <span className="font-medium">Original input</span>
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            {inputChangedSinceSubmit ? <span>edited</span> : null}
+            <span>{input.length} chars</span>
+            <ChevronDown
+              className={`size-4 transition-transform ${
+                inputExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </span>
+        </button>
+        {inputExpanded ? (
+          <div
+            id="plan-original-input-panel"
+            className="flex flex-col gap-3 border-t border-border px-4 pb-4 pt-3"
+          >
+            <Textarea
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              className="max-h-[400px] min-h-[160px] text-sm"
+              spellCheck={false}
+              disabled={isStreaming}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => previewFileInputRef.current?.click()}
+                disabled={isStreaming}
+              >
+                <Upload className="size-4" />
+                Upload .md file
+              </Button>
+              <input
+                ref={previewFileInputRef}
+                type="file"
+                accept=".md,.markdown,.txt,text/markdown,text/plain"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) handleFile(file);
+                  event.target.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleReRun}
+                disabled={
+                  isStreaming ||
+                  saving ||
+                  !input.trim() ||
+                  !inputChangedSinceSubmit
+                }
+              >
+                <RefreshCw className="size-4" />
+                Re-run conversion
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </div>
 
       {display ? (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
