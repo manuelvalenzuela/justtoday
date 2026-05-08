@@ -12,17 +12,34 @@ export default function SignInPage() {
 
         <RotatingIntro />
 
-        <form
-          action={async () => {
-            "use server";
-            await signIn("google", { redirectTo: "/" });
-          }}
-          className="mt-8"
-        >
-          <Button type="submit" size="lg" className="w-full">
-            Continue with Google
-          </Button>
-        </form>
+        <div className="mt-8 space-y-3">
+          <form
+            action={async () => {
+              "use server";
+              await signIn("google", { redirectTo: "/" });
+            }}
+          >
+            <Button type="submit" size="lg" className="w-full">
+              Continue with Google
+            </Button>
+          </form>
+
+          <form
+            action={async () => {
+              "use server";
+              await signIn("github", { redirectTo: "/" });
+            }}
+          >
+            <Button
+              type="submit"
+              size="lg"
+              variant="outline"
+              className="w-full"
+            >
+              Continue with GitHub
+            </Button>
+          </form>
+        </div>
       </div>
     </main>
   );

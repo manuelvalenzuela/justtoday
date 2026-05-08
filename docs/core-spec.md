@@ -9,7 +9,7 @@ The guiding principle is *small and lightweight*. Anything not in this document 
 ## 1. Users & auth
 
 - Multi-user. Each user has their own plans and history.
-- Login via **Google** (Auth.js / NextAuth). No email/password, no other social providers in v1.
+- Login via **Google** or **GitHub** (Auth.js / NextAuth). No email/password.
 - Users are persisted in Postgres.
 
 ## 2. Plans
@@ -126,4 +126,3 @@ These are explicitly **not** in v1. They may become future feature plans (separa
 - Notifications / reminders.
 - Analytics / progress dashboards.
 - Export of history.
-- Multiple authentication providers.
