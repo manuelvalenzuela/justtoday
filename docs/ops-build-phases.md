@@ -115,7 +115,7 @@ This doc is the source of truth for phase scope and status. Update the status li
 
 **Status:** done
 
-**Delivers:** App Service B1 Linux (`justtoday-app-c67df7`) provisioned in `rg-justtoday/westus3`, co-located with the existing Postgres Flexible Server for low DB latency. Runtime is `NODE:22-lts` with `node server.js` as the startup command, served from Next.js's `output: 'standalone'` bundle. App Service config carries `DATABASE_URL`, `AUTH_SECRET` (fresh prod-only value), `AUTH_URL`, `AUTH_TRUST_HOST=true`, `AUTH_GOOGLE_ID/SECRET`, and the `AZURE_AI_*` quartet. The 37 App Service outbound IPs are added to the Postgres firewall as `appservice-N` rules. `infra/provision.sh` is idempotent — re-running won't duplicate resources.
+**Delivers:** App Service B1 Linux (`justtoday-app-<suffix>`) provisioned in `rg-justtoday/westus3`, co-located with the existing Postgres Flexible Server for low DB latency. Runtime is `NODE:22-lts` with `node server.js` as the startup command, served from Next.js's `output: 'standalone'` bundle. App Service config carries `DATABASE_URL`, `AUTH_SECRET` (fresh prod-only value), `AUTH_URL`, `AUTH_TRUST_HOST=true`, `AUTH_GOOGLE_ID/SECRET`, and the `AZURE_AI_*` quartet. The 37 App Service outbound IPs are added to the Postgres firewall as `appservice-N` rules. `infra/provision.sh` is idempotent — re-running won't duplicate resources.
 
 GitHub Actions workflow (`.github/workflows/deploy.yml`): on push to `main`, install deps, `prisma generate`, `next build`, `prisma migrate deploy`, assemble the standalone bundle (`.next/standalone/` plus `.next/static` and optional `public/`), zip, and deploy via `azure/webapps-deploy@v3` using a publish profile secret. Required GitHub config: variable `AZURE_WEBAPP_NAME`, secrets `AZURE_WEBAPP_PUBLISH_PROFILE` and `DATABASE_URL`.
 
@@ -124,5 +124,5 @@ First production deploy verified: `/` redirects 307 → `/signin`; `/signin` ret
 **Notes:**
 - App Service basic publishing creds default to **disabled** on new B1 sites — `azure/webapps-deploy@v3` rejects the profile with "Publish profile is invalid for app-name and slot-name provided" until SCM basic auth is re-enabled. Fix: `az resource update ... basicPublishingCredentialsPolicies/scm --set properties.allow=true`, then re-export the publish profile and update the GitHub secret. OIDC federated identity is the more secure long-term option.
 - The standalone copy step has to be tolerant of a missing `public/` — the repo doesn't ship one.
-- Production Google OAuth redirect URI registered: `https://justtoday-app-c67df7.azurewebsites.net/api/auth/callback/google` (alongside the localhost URI from P3).
+- Production Google OAuth redirect URI registered: `https://justtoday-app-<suffix>.azurewebsites.net/api/auth/callback/google` (alongside the localhost URI from P3).
 - Same Postgres database serves dev and prod for v1; this matches the spec's single-server scope. If/when that changes, dev gets its own DB and the App Service config keeps the prod connection string.

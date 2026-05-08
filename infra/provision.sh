@@ -8,7 +8,7 @@ RG="${RG:-rg-justtoday}"
 LOCATION="${LOCATION:-westus3}"
 PLAN="${PLAN:-justtoday-plan}"
 APP="${APP:-justtoday-app-$(echo "$RANDOM" | md5sum | cut -c1-6)}"
-PG_SERVER="${PG_SERVER:-justtoday-db-0b6edf}"
+PG_SERVER="${PG_SERVER:-justtoday-db-<your-suffix>}"
 
 echo "Resource group: $RG"
 echo "Plan:           $PLAN"

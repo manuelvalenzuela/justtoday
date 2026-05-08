@@ -2,6 +2,8 @@
   "name": "justtoday",
   "version": "0.1.0",
   "private": true,
+  "author": "Manuel Valenzuela",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
