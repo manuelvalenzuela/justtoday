@@ -10,6 +10,9 @@
     "start": "next start",
     "lint": "eslint"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
     "@ai-sdk/azure": "^3.0.55",
     "@ai-sdk/react": "^3.0.172",
@@ -41,6 +44,7 @@
     "eslint-config-next": "16.2.4",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

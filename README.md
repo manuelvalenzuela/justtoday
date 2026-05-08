@@ -2,6 +2,12 @@
 
 A chat-based study tracker that walks you through a learning plan **one day at a time**.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./public/screenshots/chat-dark.png">
+  <img src="./public/screenshots/chat-light.png" alt="justtoday chat surface — sidebar with the active plan, today's day pill at the top, and a streamed conversation about useReducer">
+</picture>
+
+
 You paste a plan (a markdown outline, a ChatGPT export, or just a few sentences about what you want to learn). The app turns it into a day-by-day sequence, then each day it:
 
 1. Tells you what to study today and recaps what you did yesterday.
